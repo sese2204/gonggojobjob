@@ -30,3 +30,9 @@ springdoc:
 
 server:
   port: 8080
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    timeout-seconds: 30
