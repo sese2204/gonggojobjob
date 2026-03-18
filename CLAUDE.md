@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-18
 
 ## Active Technologies
 
-- Kotlin 1.9.25 on JVM 21 + Spring Boot 3.5.11, Spring Data JPA, H2 (dev), `RestClient` (Spring Web), Jackson (002-ai-job-integration)
+- Kotlin 1.9.25 / JVM 21 (existing) + Spring Boot 3.x, Spring Data JPA, springdoc-openapi (existing) (001-job-search-api)
 
 ## Project Structure
 
@@ -18,6 +18,9 @@ src/main/kotlin/org/example/kotlinai/
 ├── dto/response/   ← outbound data classes
 └── global/exception/ ← GlobalExceptionHandler, ErrorResponse
 src/test/kotlin/    ← mirrors main package structure
+backend/
+frontend/
+tests/
 ```
 
 ## Commands
