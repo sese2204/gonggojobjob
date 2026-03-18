@@ -1,10 +1,14 @@
 package org.example.kotlinai.entity
 
 import jakarta.persistence.*
+import jakarta.persistence.UniqueConstraint
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "job_listings")
+@Table(
+    name = "job_listings",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["source_name", "source_id"])],
+)
 class JobListing(
 
     @Column(nullable = false)
@@ -13,7 +17,7 @@ class JobListing(
     @Column(nullable = false)
     val company: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     val url: String,
 
     @Column(columnDefinition = "TEXT")
@@ -21,6 +25,12 @@ class JobListing(
 
     @Column(nullable = false)
     val collectedAt: LocalDateTime = LocalDateTime.now(),
+
+    @Column(name = "source_name")
+    val sourceName: String? = null,
+
+    @Column(name = "source_id")
+    val sourceId: String? = null,
 
 ) {
     @Id

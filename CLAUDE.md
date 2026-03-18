@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-18
 
 ## Active Technologies
+- Kotlin 1.9.25 / JVM 21 + Spring Boot 3.5.11, Spring Data JPA, Spring Web (RestClient), springdoc-openapi 2.8.6, `jackson-dataformat-xml` (NEW) (003-job-ingestion-pipeline)
+- H2 (dev), `ddl-auto: create-drop` (003-job-ingestion-pipeline)
 
 - Kotlin 1.9.25 / JVM 21 (existing) + Spring Boot 3.x, Spring Data JPA, springdoc-openapi (existing) (001-job-search-api)
 
@@ -40,6 +42,7 @@ tests/
 - Expression bodies for single-expression functions
 
 ## Recent Changes
+- 003-job-ingestion-pipeline: Added Kotlin 1.9.25 / JVM 21 + Spring Boot 3.5.11, Spring Data JPA, Spring Web (RestClient), springdoc-openapi 2.8.6, `jackson-dataformat-xml` (NEW)
 
 - 002-ai-job-integration: Added Kotlin 1.9.25 on JVM 21 + Spring Boot 3.5.11, Spring Data JPA, H2 (dev), `RestClient` (Spring Web), Jackson
 

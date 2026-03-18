@@ -5,8 +5,6 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.example.kotlinai.dto.request.CreateUserRequest
 import org.example.kotlinai.dto.response.UserResponse
 import org.example.kotlinai.service.UserService
-import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
