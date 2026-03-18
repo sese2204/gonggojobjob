@@ -42,4 +42,8 @@ out/
 ### Speckit ###
 .specify/
 .claude/
+
+### Local config (secrets) ###
+application-local.yml
+src/main/resources/application-local.yml
 specs/

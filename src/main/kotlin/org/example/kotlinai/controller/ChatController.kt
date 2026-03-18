@@ -1,5 +1,7 @@
 package org.example.kotlinai.controller
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.example.kotlinai.dto.request.CreateConversationRequest
 import org.example.kotlinai.dto.request.SendMessageRequest
 import org.example.kotlinai.dto.response.ConversationResponse
