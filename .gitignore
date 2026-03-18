@@ -42,3 +42,4 @@ out/
 ### Speckit ###
 .specify/
 .claude/
+specs/
