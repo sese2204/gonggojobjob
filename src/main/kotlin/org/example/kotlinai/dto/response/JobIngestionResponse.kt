@@ -1,5 +1,9 @@
 package org.example.kotlinai.dto.response
 
 data class JobIngestionResponse(
-    val count: Int,
+    val sourceName: String,
+    val newCount: Int,
+    val duplicateCount: Int,
+    val failedCount: Int,
+    val success: Boolean,
 )

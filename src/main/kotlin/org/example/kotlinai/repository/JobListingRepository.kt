@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface JobListingRepository : JpaRepository<JobListing, Long> {
     fun findTop10ByOrderByCollectedAtDesc(): List<JobListing>
+    fun existsBySourceNameAndSourceId(sourceName: String, sourceId: String): Boolean
+    fun deleteBySourceName(sourceName: String)
 }

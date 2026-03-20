@@ -17,10 +17,7 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    show-sql: false
 
 springdoc:
   swagger-ui:
@@ -35,4 +32,10 @@ gemini:
   api:
     key: ${GEMINI_API_KEY:}
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    timeout-seconds: 30
+
+goyong24:
+  api:
+    key: ${GOYONG24_API_KEY:}
+    url: https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L21.do
     timeout-seconds: 30
