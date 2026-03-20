@@ -22,6 +22,11 @@ class GlobalExceptionHandler {
     fun handleAiServiceError(e: AiServiceException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), e.message ?: "AI 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."))
+
+    @ExceptionHandler(EmbeddingException::class)
+    fun handleEmbeddingError(e: EmbeddingException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), e.message ?: "임베딩 서비스를 일시적으로 사용할 수 없습니다."))
 }
 
 data class ErrorResponse(

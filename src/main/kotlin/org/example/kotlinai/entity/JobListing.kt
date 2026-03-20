@@ -32,6 +32,16 @@ class JobListing(
     @Column(name = "source_id")
     val sourceId: String? = null,
 
+    @Column(columnDefinition = "vector(768)")
+    var embedding: String? = null,
+
+    var embeddedAt: LocalDateTime? = null,
+
+    var embeddingModel: String? = null,
+
+    @Column(insertable = false, updatable = false, columnDefinition = "tsvector")
+    val searchVector: String? = null,
+
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -6,25 +6,28 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.example.kotlinai.config.RagProperties
 import org.example.kotlinai.dto.request.JobSearchRequest
 import org.example.kotlinai.dto.response.JobSearchResponse
 import org.example.kotlinai.global.exception.ErrorResponse
 import org.example.kotlinai.service.JobSearchService
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-@Tag(name = "Job Search", description = "AI 기반 채용 공고 검색 API")
+@Tag(name = "Job Search", description = "AI 기반 RAG 채용 공고 검색 API")
 @RestController
 @RequestMapping("/api/jobs")
 class JobSearchController(
     private val jobSearchService: JobSearchService,
+    private val ragProperties: RagProperties,
 ) {
 
     @Operation(
         summary = "채용 공고 검색",
-        description = "태그 및 자연어 쿼리를 기반으로 AI가 매칭 점수와 이유를 생성하여 공고를 반환합니다.",
+        description = "태그 및 자연어 쿼리를 기반으로 벡터 유사도 + 키워드 하이브리드 검색 후 AI가 매칭 점수와 이유를 생성하여 공고를 반환합니다.",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "검색 성공"),
@@ -42,4 +45,15 @@ class JobSearchController(
     @PostMapping("/search")
     fun search(@RequestBody request: JobSearchRequest): JobSearchResponse =
         jobSearchService.search(request)
+
+    @Operation(
+        summary = "RAG 검색 설정 조회",
+        description = "현재 RAG 하이브리드 검색 설정값(top-N, 가중치)을 반환합니다.",
+    )
+    @GetMapping("/search/config")
+    fun searchConfig(): Map<String, Any> = mapOf(
+        "topN" to ragProperties.topN,
+        "keywordWeight" to ragProperties.keywordWeight,
+        "vectorWeight" to ragProperties.vectorWeight,
+    )
 }

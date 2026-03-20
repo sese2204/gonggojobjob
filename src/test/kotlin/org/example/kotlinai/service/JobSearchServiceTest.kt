@@ -1,5 +1,6 @@
 package org.example.kotlinai.service
 
+import org.example.kotlinai.config.RagProperties
 import org.example.kotlinai.dto.request.JobSearchRequest
 import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.entity.JobListing
@@ -18,7 +19,9 @@ class JobSearchServiceTest {
 
     private lateinit var jobListingRepository: JobListingRepository
     private lateinit var geminiService: GeminiService
+    private lateinit var hybridSearchService: HybridSearchService
     private lateinit var jobSearchService: JobSearchService
+    private val ragProperties = RagProperties()
 
     private val sampleListings = listOf(
         JobListing("React 개발자", "회사A", "https://a.com", "React 기반", LocalDateTime.now()).apply { },
@@ -30,7 +33,8 @@ class JobSearchServiceTest {
     fun setUp() {
         jobListingRepository = mock()
         geminiService = mock()
-        jobSearchService = JobSearchService(jobListingRepository, geminiService)
+        hybridSearchService = mock()
+        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties)
     }
 
     @Test
@@ -42,7 +46,7 @@ class JobSearchServiceTest {
 
     @Test
     fun `search returns empty response when no listings exist`() {
-        whenever(jobListingRepository.findTop10ByOrderByCollectedAtDesc()).thenReturn(emptyList())
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(emptyList())
         whenever(jobListingRepository.count()).thenReturn(0L)
 
         val result = jobSearchService.search(JobSearchRequest(tags = listOf("React")))
@@ -53,7 +57,7 @@ class JobSearchServiceTest {
 
     @Test
     fun `search sorts jobs by match descending`() {
-        whenever(jobListingRepository.findTop10ByOrderByCollectedAtDesc()).thenReturn(sampleListings)
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
             listOf(
@@ -71,7 +75,7 @@ class JobSearchServiceTest {
 
     @Test
     fun `search clamps match scores to 0-100`() {
-        whenever(jobListingRepository.findTop10ByOrderByCollectedAtDesc()).thenReturn(
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(
             listOf(sampleListings[0])
         )
         whenever(jobListingRepository.count()).thenReturn(1L)
@@ -86,7 +90,7 @@ class JobSearchServiceTest {
 
     @Test
     fun `search applies fallback reason when AI returns blank reason`() {
-        whenever(jobListingRepository.findTop10ByOrderByCollectedAtDesc()).thenReturn(
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(
             listOf(sampleListings[0])
         )
         whenever(jobListingRepository.count()).thenReturn(1L)

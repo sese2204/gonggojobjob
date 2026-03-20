@@ -1,4 +1,9 @@
 spring:
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     driver-class-name: org.postgresql.Driver
@@ -10,6 +15,7 @@ spring:
       enabled: false
 
   jpa:
+    defer-datasource-initialization: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate

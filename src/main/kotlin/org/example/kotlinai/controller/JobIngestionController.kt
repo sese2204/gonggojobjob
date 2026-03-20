@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.example.kotlinai.dto.response.BackfillResponse
 import org.example.kotlinai.dto.response.JobIngestionResponse
 import org.example.kotlinai.global.exception.ErrorResponse
 import org.example.kotlinai.service.JobIngestionService
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
-@Tag(name = "Job Ingestion", description = "채용공고 수집 및 이력 관리 API")
+@Tag(name = "Job Ingestion", description = "채용공고 수집(Upsert), 임베딩 백필, 이력 관리 API")
 @RestController
 @RequestMapping("/api/ingestion")
 class JobIngestionController(
@@ -50,4 +51,20 @@ class JobIngestionController(
     @GetMapping("/history")
     fun history(): List<JobIngestionResponse> =
         jobIngestionService.getHistory()
+
+    @Operation(
+        summary = "임베딩 백필",
+        description = "임베딩이 없는 기존 공고에 대해 벡터 임베딩을 일괄 생성합니다.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "백필 완료"),
+        ApiResponse(
+            responseCode = "503",
+            description = "임베딩 서비스 불가",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @PostMapping("/backfill-embeddings")
+    fun backfillEmbeddings(): BackfillResponse =
+        jobIngestionService.backfillEmbeddings()
 }

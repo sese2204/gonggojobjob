@@ -8,6 +8,10 @@ spring:
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
 
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:never}
+
   h2:
     console:
       enabled: false
@@ -31,6 +35,17 @@ gemini:
     key: ${GEMINI_API_KEY:}
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
     timeout-seconds: 30
+
+  embedding:
+    model: gemini-embedding-001
+    dimensions: 768
+    batch-size: 10
+
+rag:
+  search:
+    top-n: 20
+    keyword-weight: 0.5
+    vector-weight: 0.5
 
 goyong24:
   api:
