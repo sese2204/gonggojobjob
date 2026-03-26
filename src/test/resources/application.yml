@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: kotlin-ai-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: email, profile
+
+jwt:
+  secret: test-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-algorithm
+  access-token-expiration: 1800000
+  refresh-token-expiration: 604800000
+
+oauth2:
+  redirect-uri: http://localhost:5173/oauth/callback
+
+gemini:
+  api:
+    key: test-key
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    timeout-seconds: 30
+  embedding:
+    model: gemini-embedding-001
+    dimensions: 768
+    batch-size: 10
+
+rag:
+  search:
+    top-n: 20
+    keyword-weight: 0.5
+    vector-weight: 0.5
+
+goyong24:
+  api:
+    key: test-key
+    url: https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L21.do
+    timeout-seconds: 30

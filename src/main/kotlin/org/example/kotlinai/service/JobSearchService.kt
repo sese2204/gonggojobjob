@@ -12,6 +12,7 @@ import org.example.kotlinai.repository.JobListingRepository
 import org.example.kotlinai.repository.SearchHistoryRepository
 import org.example.kotlinai.repository.UserRepository
 import org.slf4j.LoggerFactory
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -47,7 +48,7 @@ class JobSearchService(
         if (listings.isEmpty()) {
             log.warn("[Search] 하이브리드 검색 결과 0건 → 빈 응답 반환")
             val response = JobSearchResponse(jobs = emptyList(), totalCount = totalCount, newTodayCount = 0)
-            saveSearchHistory(request, emptyList(), emptyMap())
+            saveSearchHistory(request, emptyList(), emptyMap(), currentUserId())
             return response
         }
 
@@ -69,17 +70,21 @@ class JobSearchService(
 
         log.info("[Search] 최종 응답 - {}건, totalCount={}, newToday={}", jobs.size, totalCount, newTodayCount)
 
-        saveSearchHistory(request, listings, aiResultMap)
+        saveSearchHistory(request, listings, aiResultMap, currentUserId())
 
         return JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
     }
+
+    private fun currentUserId(): Long? =
+        SecurityContextHolder.getContext().authentication?.principal as? Long
 
     private fun saveSearchHistory(
         request: JobSearchRequest,
         listings: List<JobListing>,
         aiResultMap: Map<String, AiMatchResult>,
+        userId: Long?,
     ) {
-        val userId = request.userId ?: return
+        userId ?: return
 
         val user = userRepository.findById(userId).orElse(null)
         if (user == null) {

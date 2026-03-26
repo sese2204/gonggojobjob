@@ -18,6 +18,9 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
 import java.time.LocalDateTime
 import java.util.Optional
 import kotlin.test.assertEquals
@@ -47,6 +50,14 @@ class JobSearchServiceTest {
         userRepository = mock()
         searchHistoryRepository = mock()
         jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository)
+        SecurityContextHolder.clearContext()
+    }
+
+    private fun setAuthenticatedUser(userId: Long) {
+        val auth = UsernamePasswordAuthenticationToken(
+            userId, null, listOf(SimpleGrantedAuthority("ROLE_USER"))
+        )
+        SecurityContextHolder.getContext().authentication = auth
     }
 
     @Test
@@ -116,7 +127,8 @@ class JobSearchServiceTest {
     }
 
     @Test
-    fun `search saves history when userId is valid`() {
+    fun `search saves history when user is authenticated`() {
+        setAuthenticatedUser(1L)
         val user = User("test@test.com", "테스트")
         whenever(userRepository.findById(1L)).thenReturn(Optional.of(user))
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
@@ -126,7 +138,7 @@ class JobSearchServiceTest {
         )
         whenever(searchHistoryRepository.save(any<SearchHistory>())).thenAnswer { it.arguments[0] }
 
-        jobSearchService.search(JobSearchRequest(tags = listOf("React"), query = "프론트", userId = 1L))
+        jobSearchService.search(JobSearchRequest(tags = listOf("React"), query = "프론트"))
 
         val captor = argumentCaptor<SearchHistory>()
         verify(searchHistoryRepository).save(captor.capture())
@@ -138,37 +150,39 @@ class JobSearchServiceTest {
     }
 
     @Test
-    fun `search does not save history when userId is null`() {
+    fun `search does not save history when user is not authenticated`() {
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
 
-        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = null))
+        jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 
         verify(searchHistoryRepository, never()).save(any<SearchHistory>())
     }
 
     @Test
     fun `search skips save when userId does not exist`() {
+        setAuthenticatedUser(999L)
         whenever(userRepository.findById(999L)).thenReturn(Optional.empty())
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
 
-        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = 999L))
+        jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 
         verify(searchHistoryRepository, never()).save(any<SearchHistory>())
     }
 
     @Test
-    fun `search saves history with zero results`() {
+    fun `search saves history with zero results when authenticated`() {
+        setAuthenticatedUser(1L)
         val user = User("test@test.com", "테스트")
         whenever(userRepository.findById(1L)).thenReturn(Optional.of(user))
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(emptyList())
         whenever(jobListingRepository.count()).thenReturn(0L)
         whenever(searchHistoryRepository.save(any<SearchHistory>())).thenAnswer { it.arguments[0] }
 
-        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = 1L))
+        jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 
         val captor = argumentCaptor<SearchHistory>()
         verify(searchHistoryRepository).save(captor.capture())

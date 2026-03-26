@@ -1,6 +1,5 @@
 package org.example.kotlinai.service
 
-import org.example.kotlinai.dto.request.CreateConversationRequest
 import org.example.kotlinai.dto.request.SendMessageRequest
 import org.example.kotlinai.dto.response.ConversationResponse
 import org.example.kotlinai.dto.response.MessageResponse
@@ -23,12 +22,12 @@ class ChatService(
 ) {
 
     @Transactional
-    fun createConversation(request: CreateConversationRequest): ConversationResponse {
-        val user = userRepository.findById(request.userId)
-            .orElseThrow { NoSuchElementException("유저를 찾을 수 없습니다: ${request.userId}") }
+    fun createConversation(userId: Long, title: String?): ConversationResponse {
+        val user = userRepository.findById(userId)
+            .orElseThrow { NoSuchElementException("유저를 찾을 수 없습니다: $userId") }
 
         val conversation = conversationRepository.save(
-            Conversation(user = user, title = request.title)
+            Conversation(user = user, title = title)
         )
         return conversation.toResponse()
     }
