@@ -5,13 +5,21 @@ import org.example.kotlinai.dto.request.JobSearchRequest
 import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.repository.JobListingRepository
+import org.example.kotlinai.repository.SearchHistoryRepository
+import org.example.kotlinai.repository.UserRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.example.kotlinai.entity.SearchHistory
+import org.example.kotlinai.entity.User
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDateTime
+import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -20,6 +28,8 @@ class JobSearchServiceTest {
     private lateinit var jobListingRepository: JobListingRepository
     private lateinit var geminiService: GeminiService
     private lateinit var hybridSearchService: HybridSearchService
+    private lateinit var userRepository: UserRepository
+    private lateinit var searchHistoryRepository: SearchHistoryRepository
     private lateinit var jobSearchService: JobSearchService
     private val ragProperties = RagProperties()
 
@@ -34,7 +44,9 @@ class JobSearchServiceTest {
         jobListingRepository = mock()
         geminiService = mock()
         hybridSearchService = mock()
-        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties)
+        userRepository = mock()
+        searchHistoryRepository = mock()
+        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository)
     }
 
     @Test
@@ -101,5 +113,66 @@ class JobSearchServiceTest {
         val result = jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 
         assertEquals("AI 분석 결과 관련 공고입니다.", result.jobs[0].reason)
+    }
+
+    @Test
+    fun `search saves history when userId is valid`() {
+        val user = User("test@test.com", "테스트")
+        whenever(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
+        whenever(jobListingRepository.count()).thenReturn(3L)
+        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
+            listOf(AiMatchResult("0", 80, "일치"))
+        )
+        whenever(searchHistoryRepository.save(any<SearchHistory>())).thenAnswer { it.arguments[0] }
+
+        jobSearchService.search(JobSearchRequest(tags = listOf("React"), query = "프론트", userId = 1L))
+
+        val captor = argumentCaptor<SearchHistory>()
+        verify(searchHistoryRepository).save(captor.capture())
+        val saved = captor.firstValue
+        assertEquals("React", saved.tagsString)
+        assertEquals("프론트", saved.query)
+        assertEquals(3, saved.resultCount)
+        assertEquals(3, saved.recommendedJobs.size)
+    }
+
+    @Test
+    fun `search does not save history when userId is null`() {
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
+        whenever(jobListingRepository.count()).thenReturn(3L)
+        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
+
+        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = null))
+
+        verify(searchHistoryRepository, never()).save(any<SearchHistory>())
+    }
+
+    @Test
+    fun `search skips save when userId does not exist`() {
+        whenever(userRepository.findById(999L)).thenReturn(Optional.empty())
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
+        whenever(jobListingRepository.count()).thenReturn(3L)
+        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
+
+        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = 999L))
+
+        verify(searchHistoryRepository, never()).save(any<SearchHistory>())
+    }
+
+    @Test
+    fun `search saves history with zero results`() {
+        val user = User("test@test.com", "테스트")
+        whenever(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(emptyList())
+        whenever(jobListingRepository.count()).thenReturn(0L)
+        whenever(searchHistoryRepository.save(any<SearchHistory>())).thenAnswer { it.arguments[0] }
+
+        jobSearchService.search(JobSearchRequest(tags = listOf("React"), userId = 1L))
+
+        val captor = argumentCaptor<SearchHistory>()
+        verify(searchHistoryRepository).save(captor.capture())
+        assertEquals(0, captor.firstValue.resultCount)
+        assertTrue(captor.firstValue.recommendedJobs.isEmpty())
     }
 }
