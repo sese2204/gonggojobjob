@@ -7,7 +7,6 @@ import org.example.kotlinai.repository.JobListingRepository
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -15,7 +14,6 @@ import org.mockito.kotlin.whenever
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class JobIngestionServiceTest {
@@ -23,15 +21,22 @@ class JobIngestionServiceTest {
     private val mockClient = StubExternalJobClient()
     private val jobListingRepository: JobListingRepository = mock()
     private val ingestionRunRepository: IngestionRunRepository = mock()
+    private val embeddingService: EmbeddingService = mock()
     private val service = JobIngestionService(
         clients = listOf(mockClient),
         jobListingRepository = jobListingRepository,
         ingestionRunRepository = ingestionRunRepository,
+        embeddingService = embeddingService,
     )
 
-    private fun stubSave(run: IngestionRun) {
+    private fun stubSave() {
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())
+    }
+
+    private fun stubUpsert(existingSourceIds: List<String> = emptyList()) {
+        whenever(jobListingRepository.findSourceIdsBySourceName(any())).thenReturn(existingSourceIds)
+        doAnswer { it.arguments[0] }.whenever(jobListingRepository).save(any())
     }
 
     @Test
@@ -43,9 +48,8 @@ class JobIngestionServiceTest {
 
     @Test
     fun `new jobs are saved and newCount is correct`() {
-        stubSave(IngestionRun(sourceName = "mock", startedAt = LocalDateTime.now()))
-        doAnswer { it.arguments[0] }.whenever(jobListingRepository).save(any())
-        whenever(jobListingRepository.existsBySourceNameAndSourceId(any(), any())).thenReturn(false)
+        stubSave()
+        stubUpsert()
 
         val results = service.runIngestion("mock")
 
@@ -56,22 +60,20 @@ class JobIngestionServiceTest {
     }
 
     @Test
-    fun `duplicate jobs are skipped and duplicateCount is correct`() {
-        stubSave(IngestionRun(sourceName = "mock", startedAt = LocalDateTime.now()))
-        whenever(jobListingRepository.existsBySourceNameAndSourceId(any(), any())).thenReturn(true)
+    fun `existing jobs are skipped and duplicateCount is correct`() {
+        stubSave()
+        stubUpsert(existingSourceIds = listOf("mock-001", "mock-002"))
 
         val results = service.runIngestion("mock")
 
         assertEquals(0, results[0].newCount)
         assertEquals(2, results[0].duplicateCount)
-        verify(jobListingRepository, times(0)).save(any())
     }
 
     @Test
     fun `source name null runs all clients`() {
-        stubSave(IngestionRun(sourceName = "mock", startedAt = LocalDateTime.now()))
-        doAnswer { it.arguments[0] }.whenever(jobListingRepository).save(any())
-        whenever(jobListingRepository.existsBySourceNameAndSourceId(any(), any())).thenReturn(false)
+        stubSave()
+        stubUpsert()
 
         val results = service.runIngestion(null)
 
@@ -89,6 +91,7 @@ class JobIngestionServiceTest {
             clients = listOf(failingClient),
             jobListingRepository = jobListingRepository,
             ingestionRunRepository = ingestionRunRepository,
+            embeddingService = embeddingService,
         )
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())

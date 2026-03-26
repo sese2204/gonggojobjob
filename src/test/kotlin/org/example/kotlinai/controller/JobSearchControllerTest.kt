@@ -6,6 +6,7 @@ import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.global.exception.AiServiceException
 import org.example.kotlinai.repository.JobListingRepository
 import org.example.kotlinai.service.GeminiService
+import org.example.kotlinai.service.HybridSearchService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -31,6 +32,9 @@ class JobSearchControllerTest {
     @MockBean
     private lateinit var jobListingRepository: JobListingRepository
 
+    @MockBean
+    private lateinit var hybridSearchService: HybridSearchService
+
     private val objectMapper = jacksonObjectMapper()
 
     private val fakeListings = listOf(
@@ -40,7 +44,7 @@ class JobSearchControllerTest {
 
     @BeforeEach
     fun setUp() {
-        whenever(jobListingRepository.findTop10ByOrderByCollectedAtDesc()).thenReturn(fakeListings)
+        whenever(hybridSearchService.search(any(), any(), any())).thenReturn(fakeListings)
         whenever(jobListingRepository.count()).thenReturn(2L)
     }
 
