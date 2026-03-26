@@ -13,6 +13,15 @@ class User(
     @Column(nullable = false)
     var name: String,
 
+    @Column(nullable = false)
+    val provider: String = "LOCAL",
+
+    @Column
+    val providerId: String? = null,
+
+    @Column
+    var profileImageUrl: String? = null,
+
     @Column(nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 

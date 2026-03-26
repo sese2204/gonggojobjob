@@ -14,10 +14,10 @@ import org.example.kotlinai.service.SearchHistoryService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Tag(name = "Search History", description = "검색 기록 및 추천 공고 조회 API")
@@ -33,7 +33,7 @@ class SearchHistoryController(
     )
     @GetMapping
     fun getSearchHistories(
-        @RequestParam userId: Long,
+        @AuthenticationPrincipal userId: Long,
         @PageableDefault(size = 20) pageable: Pageable,
     ): Page<SearchHistoryResponse> =
         searchHistoryService.getSearchHistories(userId, pageable)
@@ -60,7 +60,7 @@ class SearchHistoryController(
     )
     @GetMapping("/recommended-jobs")
     fun getRecommendedJobs(
-        @RequestParam userId: Long,
+        @AuthenticationPrincipal userId: Long,
         @PageableDefault(size = 20) pageable: Pageable,
     ): Page<RecommendedJobResponse> =
         searchHistoryService.getRecommendedJobs(userId, pageable)
