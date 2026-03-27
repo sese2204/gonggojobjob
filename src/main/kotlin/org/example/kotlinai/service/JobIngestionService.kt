@@ -19,6 +19,7 @@ class JobIngestionService(
     private val jobListingRepository: JobListingRepository,
     private val ingestionRunRepository: IngestionRunRepository,
     private val embeddingService: EmbeddingService,
+    private val jobListingSaver: JobListingSaver,
 ) {
     private val log = LoggerFactory.getLogger(JobIngestionService::class.java)
 
@@ -135,7 +136,7 @@ class JobIngestionService(
                 }
 
                 try {
-                    val listing = jobListingRepository.save(
+                    val listing = jobListingSaver.save(
                         JobListing(
                             title = dto.title,
                             company = dto.company,
