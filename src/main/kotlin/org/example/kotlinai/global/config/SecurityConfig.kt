@@ -41,6 +41,7 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/jobs/search").permitAll()
                     .requestMatchers("/api/jobs/search/config").permitAll()
                     .requestMatchers("/api/stats").permitAll()
+                    .requestMatchers("/api/cheers/**").permitAll()
                     .requestMatchers("/api/ingestion/**").permitAll()
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
