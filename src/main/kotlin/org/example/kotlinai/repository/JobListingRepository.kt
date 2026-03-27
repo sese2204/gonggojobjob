@@ -67,6 +67,9 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
         @Param("sourceIds") sourceIds: List<String>,
     )
 
+    // Count jobs collected after a given time
+    fun countByCollectedAtAfter(after: java.time.LocalDateTime): Long
+
     // Find unembedded listings for backfill
     fun findByEmbeddingIsNull(): List<JobListing>
 
