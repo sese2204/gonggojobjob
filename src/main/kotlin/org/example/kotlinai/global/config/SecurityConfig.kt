@@ -1,5 +1,6 @@
 package org.example.kotlinai.global.config
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.example.kotlinai.global.security.CustomOAuth2UserService
 import org.example.kotlinai.global.security.JwtAuthenticationFilter
 import org.example.kotlinai.global.security.JwtProperties
@@ -8,9 +9,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
@@ -48,6 +52,9 @@ class SecurityConfig(
                     .requestMatchers("/h2-console/**").permitAll()
                     .anyRequest().authenticated()
             }
+            .exceptionHandling { ex ->
+                ex.authenticationEntryPoint(apiAuthenticationEntryPoint())
+            }
             .oauth2Login { oauth2 ->
                 oauth2
                     .userInfoEndpoint { it.userService(customOAuth2UserService) }
@@ -55,6 +62,16 @@ class SecurityConfig(
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .build()
+
+    @Bean
+    fun apiAuthenticationEntryPoint(): AuthenticationEntryPoint =
+        AuthenticationEntryPoint { request, response, _ ->
+            response.status = HttpStatus.UNAUTHORIZED.value()
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            response.characterEncoding = "UTF-8"
+            val body = mapOf("status" to 401, "message" to "인증이 필요합니다.")
+            response.writer.write(ObjectMapper().writeValueAsString(body))
+        }
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
