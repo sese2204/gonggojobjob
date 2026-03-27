@@ -75,8 +75,12 @@ class JobSearchService(
         return JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
     }
 
-    private fun currentUserId(): Long? =
-        SecurityContextHolder.getContext().authentication?.principal as? Long
+    private fun currentUserId(): Long? {
+        val auth = SecurityContextHolder.getContext().authentication
+        log.debug("[Search] SecurityContext auth={}, principalType={}",
+            auth?.javaClass?.simpleName, auth?.principal?.javaClass?.simpleName)
+        return auth?.principal as? Long
+    }
 
     private fun saveSearchHistory(
         request: JobSearchRequest,
@@ -84,7 +88,10 @@ class JobSearchService(
         aiResultMap: Map<String, AiMatchResult>,
         userId: Long?,
     ) {
-        userId ?: return
+        if (userId == null) {
+            log.warn("[Search] 인증된 사용자 없음 — 검색 기록 저장 스킵 (토큰 미포함 또는 만료)")
+            return
+        }
 
         val user = userRepository.findById(userId).orElse(null)
         if (user == null) {

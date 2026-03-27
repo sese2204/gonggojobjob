@@ -29,7 +29,7 @@ class SearchHistoryService(
             .toDetailResponse()
 
     fun getRecommendedJobs(userId: Long, pageable: Pageable): Page<RecommendedJobResponse> =
-        recommendedJobRepository.findAllBySearchHistoryUserIdOrderBySearchHistorySearchedAtDesc(userId, pageable)
+        recommendedJobRepository.findAllByUserId(userId, pageable)
             .map { it.toResponse() }
 }
 

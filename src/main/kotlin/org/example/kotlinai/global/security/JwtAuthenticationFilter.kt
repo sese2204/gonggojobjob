@@ -14,6 +14,8 @@ class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
 ) : OncePerRequestFilter() {
 
+    private val log = org.slf4j.LoggerFactory.getLogger(JwtAuthenticationFilter::class.java)
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
@@ -21,15 +23,19 @@ class JwtAuthenticationFilter(
     ) {
         val token = resolveToken(request)
 
-        if (token != null && jwtTokenProvider.validate(token)) {
-            val userId = jwtTokenProvider.getUserId(token)
-
-            val authentication = UsernamePasswordAuthenticationToken(
-                userId,
-                null,
-                listOf(SimpleGrantedAuthority("ROLE_USER")),
-            )
-            SecurityContextHolder.getContext().authentication = authentication
+        if (token != null) {
+            if (jwtTokenProvider.validate(token)) {
+                val userId = jwtTokenProvider.getUserId(token)
+                val authentication = UsernamePasswordAuthenticationToken(
+                    userId,
+                    null,
+                    listOf(SimpleGrantedAuthority("ROLE_USER")),
+                )
+                SecurityContextHolder.getContext().authentication = authentication
+                log.debug("[JWT] 인증 성공 - userId={}", userId)
+            } else {
+                log.warn("[JWT] 토큰 검증 실패 - 만료되었거나 유효하지 않은 토큰")
+            }
         }
 
         filterChain.doFilter(request, response)
