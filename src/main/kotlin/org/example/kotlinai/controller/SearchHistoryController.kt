@@ -13,6 +13,7 @@ import org.example.kotlinai.global.exception.ErrorResponse
 import org.example.kotlinai.service.SearchHistoryService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.data.web.PageableDefault
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -61,7 +62,7 @@ class SearchHistoryController(
     @GetMapping("/recommended-jobs")
     fun getRecommendedJobs(
         @AuthenticationPrincipal userId: Long,
-        @PageableDefault(size = 20) pageable: Pageable,
+        @PageableDefault(size = 20, sort = ["searchHistory.searchedAt"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): Page<RecommendedJobResponse> =
         searchHistoryService.getRecommendedJobs(userId, pageable)
 }

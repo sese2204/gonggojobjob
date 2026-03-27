@@ -9,7 +9,10 @@ import org.springframework.data.repository.query.Param
 
 interface RecommendedJobRepository : JpaRepository<RecommendedJob, Long> {
 
-    @Query("SELECT r FROM RecommendedJob r WHERE r.searchHistory.user.id = :userId ORDER BY r.searchHistory.searchedAt DESC")
+    @Query(
+        value = "SELECT r FROM RecommendedJob r WHERE r.searchHistory.user.id = :userId",
+        countQuery = "SELECT COUNT(r) FROM RecommendedJob r WHERE r.searchHistory.user.id = :userId",
+    )
     fun findAllByUserId(
         @Param("userId") userId: Long,
         pageable: Pageable,
