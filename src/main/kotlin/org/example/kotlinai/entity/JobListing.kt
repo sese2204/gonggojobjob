@@ -32,7 +32,7 @@ class JobListing(
     @Column(name = "source_id")
     val sourceId: String? = null,
 
-    @Column(columnDefinition = "vector(768)")
+    @Column(insertable = false, updatable = false, columnDefinition = "vector(768)")
     var embedding: String? = null,
 
     var embeddedAt: LocalDateTime? = null,

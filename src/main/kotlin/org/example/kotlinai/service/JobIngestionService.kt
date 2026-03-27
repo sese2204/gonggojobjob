@@ -117,7 +117,14 @@ class JobIngestionService(
                 .findSourceIdsBySourceName(client.sourceName())
                 .toSet()
 
-            val incomingSourceIds = jobs.mapNotNull { it.sourceId }.toSet()
+            // Deduplicate within incoming batch (API can return same sourceId across pages)
+            val deduplicatedJobs = jobs.distinctBy { it.sourceId }
+            val batchDuplicateCount = jobs.size - deduplicatedJobs.size
+            if (batchDuplicateCount > 0) {
+                log.info("배치 내 중복 sourceId {}건 제거", batchDuplicateCount)
+            }
+
+            val incomingSourceIds = deduplicatedJobs.mapNotNull { it.sourceId }.toSet()
 
             // Delete obsolete listings (present in DB but absent from source)
             if (incomingSourceIds.isNotEmpty()) {
@@ -129,7 +136,8 @@ class JobIngestionService(
 
             // Insert new, skip existing
             val newListings = mutableListOf<JobListing>()
-            for (dto in jobs) {
+            duplicateCount += batchDuplicateCount
+            for (dto in deduplicatedJobs) {
                 if (dto.sourceId in existingSourceIds) {
                     duplicateCount++
                     continue
