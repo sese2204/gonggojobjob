@@ -17,4 +17,6 @@ interface RecommendedJobRepository : JpaRepository<RecommendedJob, Long> {
         @Param("userId") userId: Long,
         pageable: Pageable,
     ): Page<RecommendedJob>
+
+    fun findByIdAndSearchHistoryUserId(id: Long, userId: Long): RecommendedJob?
 }

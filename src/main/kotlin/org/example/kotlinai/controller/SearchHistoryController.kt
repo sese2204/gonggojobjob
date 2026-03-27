@@ -16,9 +16,12 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.web.PageableDefault
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @Tag(name = "Search History", description = "검색 기록 및 추천 공고 조회 API")
@@ -57,12 +60,31 @@ class SearchHistoryController(
 
     @Operation(
         summary = "추천 공고 전체 조회",
-        description = "사용자의 모든 검색에서 추천된 공고를 최신순으로 페이지네이션하여 반환합니다.",
+        description = "사용자의 모든 검색에서 추천된 공고를 AI 매칭 점수 내림차순으로 페이지네이션하여 반환합니다.",
     )
     @GetMapping("/recommended-jobs")
     fun getRecommendedJobs(
         @AuthenticationPrincipal userId: Long,
-        @PageableDefault(size = 20, sort = ["searchHistory.searchedAt"], direction = Sort.Direction.DESC) pageable: Pageable,
+        @PageableDefault(size = 20, sort = ["matchScore"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): Page<RecommendedJobResponse> =
         searchHistoryService.getRecommendedJobs(userId, pageable)
+
+    @Operation(
+        summary = "추천 공고 삭제",
+        description = "사용자의 저장된 추천 공고를 삭제합니다.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "삭제 성공"),
+        ApiResponse(
+            responseCode = "404",
+            description = "추천 공고를 찾을 수 없음",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @DeleteMapping("/recommended-jobs/{recommendedJobId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteRecommendedJob(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable recommendedJobId: Long,
+    ) = searchHistoryService.deleteRecommendedJob(userId, recommendedJobId)
 }

@@ -31,6 +31,13 @@ class SearchHistoryService(
     fun getRecommendedJobs(userId: Long, pageable: Pageable): Page<RecommendedJobResponse> =
         recommendedJobRepository.findAllByUserId(userId, pageable)
             .map { it.toResponse() }
+
+    @Transactional
+    fun deleteRecommendedJob(userId: Long, recommendedJobId: Long) {
+        val job = recommendedJobRepository.findByIdAndSearchHistoryUserId(recommendedJobId, userId)
+            ?: throw NoSuchElementException("추천 공고를 찾을 수 없습니다. id=$recommendedJobId")
+        recommendedJobRepository.delete(job)
+    }
 }
 
 private fun SearchHistory.toResponse() = SearchHistoryResponse(
