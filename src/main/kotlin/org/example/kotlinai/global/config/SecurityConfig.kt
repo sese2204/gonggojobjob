@@ -50,6 +50,7 @@ class SecurityConfig(
                         "/api-docs/**", "/v3/api-docs/**",
                     ).permitAll()
                     .requestMatchers("/h2-console/**").permitAll()
+                    .requestMatchers("/actuator/**").permitAll()
                     .anyRequest().authenticated()
             }
             .exceptionHandling { ex ->
