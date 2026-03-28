@@ -11,6 +11,9 @@ RUN gradle bootJar --no-daemon -x test
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Seoul
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=build /app/build/libs/*.jar app.jar
@@ -26,4 +29,5 @@ ENTRYPOINT ["java", \
   "-XX:+UseG1GC", \
   "-XX:+ExitOnOutOfMemoryError", \
   "-Djava.security.egd=file:/dev/./urandom", \
+  "-Duser.timezone=Asia/Seoul", \
   "-jar", "app.jar"]
