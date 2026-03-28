@@ -80,6 +80,7 @@ jobs:
               --name kotlin-ai \
               --restart unless-stopped \
               --env-file .env \
+              --memory=768m \
               -p 8080:8080 \
               ${{ secrets.DOCKERHUB_USERNAME }}/kotlin-ai:${{ github.sha }}
 

@@ -20,4 +20,10 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:MaxMetaspaceSize=192m", \
+  "-XX:+UseG1GC", \
+  "-XX:+ExitOnOutOfMemoryError", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]
