@@ -20,3 +20,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+
+springdoc:
+  swagger-ui:
+    url: /api-docs
+  server:
+    url: https://api.job-jub.com
