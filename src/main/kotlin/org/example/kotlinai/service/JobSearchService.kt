@@ -56,10 +56,15 @@ class JobSearchService(
 
         val summaries = listings.map { it.toAiSummary() }
         log.info("[Search] AI 매칭 요청 - {}건 공고", summaries.size)
-        val aiResults = geminiService.matchJobs(request.tags, request.query, summaries)
-        log.info("[Search] AI 매칭 응답 - {}건 결과", aiResults.size)
 
-        val aiResultMap = aiResults.associateBy { it.id }
+        val aiResultMap = try {
+            val aiResults = geminiService.matchJobs(request.tags, request.query, summaries)
+            log.info("[Search] AI 매칭 응답 - {}건 결과", aiResults.size)
+            aiResults.associateBy { it.id }
+        } catch (e: Exception) {
+            log.warn("[Search] AI 매칭 실패, 점수 없이 반환: {}", e.message)
+            emptyMap()
+        }
 
         val jobs = listings
             .map { listing ->
