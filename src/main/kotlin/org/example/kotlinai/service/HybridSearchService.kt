@@ -51,7 +51,7 @@ class HybridSearchService(
 
     private fun fetchKeywordResults(searchText: String, limit: Int): List<JobListing> {
         val tsQuery = searchText.trim()
-            .replace("[^\\w가-힣\\s]".toRegex(), " ")
+            .replace("[()/<>&|!:*\\\\]".toRegex(), " ")
             .split("\\s+".toRegex())
             .filter { it.isNotBlank() }
             .joinToString(" & ")
