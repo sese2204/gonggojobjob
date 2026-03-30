@@ -85,9 +85,9 @@ class JobIngestionService(
                 }
             }
 
-            // Rate limit: Gemini free tier 100 req/min, 배치당 10건 소모 → 최대 10배치/분
+            // Rate limit: Gemini 유료 티어 — 배치 간 1초 딜레이
             if (index < chunks.size - 1) {
-                Thread.sleep(7000)
+                Thread.sleep(1000)
             }
         }
 
