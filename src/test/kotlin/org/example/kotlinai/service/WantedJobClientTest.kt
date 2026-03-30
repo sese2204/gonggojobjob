@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
-import org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.web.client.RestClient
@@ -21,8 +20,9 @@ class WantedJobClientTest {
     private val baseUrl = "https://www.wanted.co.kr/api/v4/jobs"
 
     private fun createClientWithServer(
-        maxPages: Int = 50,
+        maxPagesPerCategory: Int = 5,
         pageDelayMs: Long = 0,
+        tagTypeIds: String = "518",
     ): Pair<WantedJobClient, MockRestServiceServer> {
         val restClientBuilder = RestClient.builder().baseUrl(baseUrl)
         val server = MockRestServiceServer.bindTo(restClientBuilder).build()
@@ -35,13 +35,13 @@ class WantedJobClientTest {
             yearsStr = "0,1",
             locations = "all",
             limit = 20,
-            maxPages = maxPages,
+            maxPagesPerCategory = maxPagesPerCategory,
             pageDelayMs = pageDelayMs,
+            tagTypeIdsStr = tagTypeIds,
         )
 
         val restClientField = WantedJobClient::class.java.getDeclaredField("restClient\$delegate")
         restClientField.isAccessible = true
-        val lazyField = restClientField.get(client) as Lazy<*>
 
         val restClient = restClientBuilder.build()
         val newLazy = lazyOf(restClient)
@@ -95,7 +95,7 @@ class WantedJobClientTest {
     }
 
     @Test
-    fun `fetchJobs handles pagination across multiple pages`() {
+    fun `fetchJobs handles pagination within a category`() {
         val (client, server) = createClientWithServer()
 
         server.expect(requestTo(org.hamcrest.Matchers.containsString("offset=0")))
@@ -123,8 +123,8 @@ class WantedJobClientTest {
     }
 
     @Test
-    fun `fetchJobs stops at maxPages even if next is present`() {
-        val (client, server) = createClientWithServer(maxPages = 1)
+    fun `fetchJobs stops at maxPagesPerCategory`() {
+        val (client, server) = createClientWithServer(maxPagesPerCategory = 1)
 
         server.expect(requestTo(org.hamcrest.Matchers.containsString("offset=0")))
             .andRespond(
@@ -137,6 +137,35 @@ class WantedJobClientTest {
         val results = client.fetchJobs()
 
         assertEquals(1, results.size)
+        server.verify()
+    }
+
+    @Test
+    fun `fetchJobs collects from multiple categories and deduplicates`() {
+        val (client, server) = createClientWithServer(tagTypeIds = "518,523")
+
+        // Category 518
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("tag_type_ids=518")))
+            .andRespond(
+                withSuccess(
+                    buildResponse(listOf(sampleJob(1, "개발자"), sampleJob(2, "중복공고"))),
+                    MediaType.APPLICATION_JSON,
+                )
+            )
+        // Category 523 — job id=2 is duplicate
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("tag_type_ids=523")))
+            .andRespond(
+                withSuccess(
+                    buildResponse(listOf(sampleJob(2, "중복공고"), sampleJob(3, "마케터"))),
+                    MediaType.APPLICATION_JSON,
+                )
+            )
+
+        val results = client.fetchJobs()
+
+        assertEquals(3, results.size)
+        assertEquals(setOf("1", "2", "3"), results.map { it.sourceId }.toSet())
+
         server.verify()
     }
 

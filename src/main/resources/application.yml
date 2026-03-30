@@ -92,5 +92,6 @@ wanted:
     years: ${WANTED_YEARS:0,1}
     locations: ${WANTED_LOCATIONS:all}
     limit: ${WANTED_LIMIT:20}
-    max-pages: ${WANTED_MAX_PAGES:50}
+    max-pages-per-category: ${WANTED_MAX_PAGES_PER_CATEGORY:5}
     page-delay-ms: ${WANTED_PAGE_DELAY_MS:500}
+    tag-type-ids: ${WANTED_TAG_TYPE_IDS:518,523,511,507,530,508,517,513,510}

@@ -20,8 +20,9 @@ class WantedJobClient(
     @Value("\${wanted.api.years:0,1}") private val yearsStr: String,
     @Value("\${wanted.api.locations:all}") private val locations: String,
     @Value("\${wanted.api.limit:20}") private val limit: Int,
-    @Value("\${wanted.api.max-pages:50}") private val maxPages: Int,
+    @Value("\${wanted.api.max-pages-per-category:5}") private val maxPagesPerCategory: Int,
     @Value("\${wanted.api.page-delay-ms:500}") private val pageDelayMs: Long,
+    @Value("\${wanted.api.tag-type-ids:518,523,511,507,530,508,517,513,510}") private val tagTypeIdsStr: String,
 ) : ExternalJobClient {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -31,31 +32,20 @@ class WantedJobClient(
     override fun sourceName() = "wanted"
 
     override fun fetchJobs(): List<ExternalJobDto> {
-        log.info("[원티드] API 호출 시작 — url={}", apiUrl)
+        val tagTypeIds = tagTypeIdsStr.split(",").map { it.trim() }
+        log.info("[원티드] API 호출 시작 — {}개 카테고리, 카테고리당 최대 {}페이지", tagTypeIds.size, maxPagesPerCategory)
 
         return try {
             val allJobs = mutableListOf<ExternalJobDto>()
-            var offset = 0
-            var page = 0
+            val seenIds = mutableSetOf<String>()
 
-            do {
-                val responseBody = fetchPage(offset)
-                val response = objectMapper.readValue<WantedResponse>(responseBody)
+            for (tagTypeId in tagTypeIds) {
+                val categoryJobs = fetchCategory(tagTypeId, seenIds)
+                allJobs.addAll(categoryJobs)
+                log.info("[원티드] 카테고리 {} 완료 — {}건 수집", tagTypeId, categoryJobs.size)
+            }
 
-                val jobs = response.data.mapNotNull { job -> mapToDto(job) }
-                allJobs.addAll(jobs)
-
-                log.debug("[원티드] 페이지 {} 완료 — {}건 파싱 (offset={})", page + 1, jobs.size, offset)
-
-                page++
-                offset += limit
-
-                if (response.links.next != null && page < maxPages && pageDelayMs > 0) {
-                    Thread.sleep(pageDelayMs)
-                }
-            } while (response.links.next != null && page < maxPages)
-
-            log.info("[원티드] API 호출 완료 — 전체 파싱 성공: {}건 ({}페이지)", allJobs.size, page)
+            log.info("[원티드] API 호출 완료 — 전체: {}건 ({}개 카테고리)", allJobs.size, tagTypeIds.size)
             allJobs
         } catch (e: AiServiceException) {
             throw e
@@ -65,7 +55,33 @@ class WantedJobClient(
         }
     }
 
-    private fun fetchPage(offset: Int): String {
+    private fun fetchCategory(tagTypeId: String, seenIds: MutableSet<String>): List<ExternalJobDto> {
+        val categoryJobs = mutableListOf<ExternalJobDto>()
+        var offset = 0
+        var page = 0
+
+        do {
+            val responseBody = fetchPage(offset, tagTypeId)
+            val response = objectMapper.readValue<WantedResponse>(responseBody)
+
+            val jobs = response.data.mapNotNull { job -> mapToDto(job) }
+                .filter { seenIds.add(it.sourceId) }
+            categoryJobs.addAll(jobs)
+
+            log.debug("[원티드] 카테고리 {} 페이지 {} — {}건 (offset={})", tagTypeId, page + 1, jobs.size, offset)
+
+            page++
+            offset += limit
+
+            if (response.links.next != null && page < maxPagesPerCategory && pageDelayMs > 0) {
+                Thread.sleep(pageDelayMs)
+            }
+        } while (response.links.next != null && page < maxPagesPerCategory)
+
+        return categoryJobs
+    }
+
+    private fun fetchPage(offset: Int, tagTypeId: String): String {
         val years = yearsStr.split(",").map { it.trim() }
 
         return restClient.get()
@@ -76,6 +92,7 @@ class WantedJobClient(
                     .queryParam("locations", locations)
                     .queryParam("limit", limit)
                     .queryParam("offset", offset)
+                    .queryParam("tag_type_ids", tagTypeId)
                 years.forEach { year -> uriBuilder.queryParam("years", year) }
                 uriBuilder.build()
             }
