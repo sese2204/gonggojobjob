@@ -82,7 +82,7 @@ class SearchHistoryServiceTest {
         val history = SearchHistory(user, "Java", "백엔드", 1)
         val listing = JobListing("Java 개발자", "회사B", "https://b.com", "설명", LocalDateTime.now())
         val rec = RecommendedJob(history, listing, "Java 개발자", "회사B", "https://b.com", 90, "높은 일치")
-        whenever(recommendedJobRepository.findAllBySearchHistoryUserIdOrderBySearchHistorySearchedAtDesc(any(), any()))
+        whenever(recommendedJobRepository.findAllByUserId(any(), any()))
             .thenReturn(PageImpl(listOf(rec), pageable, 1))
 
         val result = searchHistoryService.getRecommendedJobs(1L, pageable)

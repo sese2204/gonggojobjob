@@ -22,11 +22,13 @@ class JobIngestionServiceTest {
     private val jobListingRepository: JobListingRepository = mock()
     private val ingestionRunRepository: IngestionRunRepository = mock()
     private val embeddingService: EmbeddingService = mock()
+    private val jobListingSaver: JobListingSaver = mock()
     private val service = JobIngestionService(
         clients = listOf(mockClient),
         jobListingRepository = jobListingRepository,
         ingestionRunRepository = ingestionRunRepository,
         embeddingService = embeddingService,
+        jobListingSaver = jobListingSaver,
     )
 
     private fun stubSave() {
@@ -36,7 +38,7 @@ class JobIngestionServiceTest {
 
     private fun stubUpsert(existingSourceIds: List<String> = emptyList()) {
         whenever(jobListingRepository.findSourceIdsBySourceName(any())).thenReturn(existingSourceIds)
-        doAnswer { it.arguments[0] }.whenever(jobListingRepository).save(any())
+        doAnswer { it.arguments[0] }.whenever(jobListingSaver).save(any())
     }
 
     @Test
@@ -92,6 +94,7 @@ class JobIngestionServiceTest {
             jobListingRepository = jobListingRepository,
             ingestionRunRepository = ingestionRunRepository,
             embeddingService = embeddingService,
+            jobListingSaver = jobListingSaver,
         )
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())

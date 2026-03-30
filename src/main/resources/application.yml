@@ -82,3 +82,15 @@ goyong24:
     key: ${GOYONG24_API_KEY:}
     url: https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L21.do
     timeout-seconds: 30
+
+wanted:
+  api:
+    url: https://www.wanted.co.kr/api/v4/jobs
+    timeout-seconds: ${WANTED_TIMEOUT:30}
+    country: ${WANTED_COUNTRY:kr}
+    job-sort: ${WANTED_JOB_SORT:job.latest_order}
+    years: ${WANTED_YEARS:0,1}
+    locations: ${WANTED_LOCATIONS:all}
+    limit: ${WANTED_LIMIT:20}
+    max-pages: ${WANTED_MAX_PAGES:50}
+    page-delay-ms: ${WANTED_PAGE_DELAY_MS:500}
