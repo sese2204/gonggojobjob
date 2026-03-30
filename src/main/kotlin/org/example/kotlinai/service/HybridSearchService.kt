@@ -50,7 +50,11 @@ class HybridSearchService(
         }
 
     private fun fetchKeywordResults(searchText: String, limit: Int): List<JobListing> {
-        val tsQuery = searchText.trim().split("\\s+".toRegex()).joinToString(" & ")
+        val tsQuery = searchText.trim()
+            .replace("[^\\w가-힣\\s]".toRegex(), " ")
+            .split("\\s+".toRegex())
+            .filter { it.isNotBlank() }
+            .joinToString(" & ")
         log.info("[Hybrid-Keyword] tsQuery='{}', limit={}", tsQuery, limit)
 
         val results = jobListingRepository.findByKeyword(tsQuery, limit)
