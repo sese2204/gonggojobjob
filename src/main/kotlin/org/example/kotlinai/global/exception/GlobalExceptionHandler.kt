@@ -23,6 +23,11 @@ class GlobalExceptionHandler {
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), e.message ?: "AI 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."))
 
+    @ExceptionHandler(DailySearchLimitExceededException::class)
+    fun handleDailySearchLimit(e: DailySearchLimitExceededException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(ErrorResponse(HttpStatus.TOO_MANY_REQUESTS.value(), e.message ?: "일일 검색 횟수를 초과했습니다."))
+
     @ExceptionHandler(EmbeddingException::class)
     fun handleEmbeddingError(e: EmbeddingException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

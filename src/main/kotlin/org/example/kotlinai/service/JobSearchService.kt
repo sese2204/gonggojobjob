@@ -1,6 +1,7 @@
 package org.example.kotlinai.service
 
 import org.example.kotlinai.config.RagProperties
+import org.example.kotlinai.global.exception.DailySearchLimitExceededException
 import org.example.kotlinai.dto.request.JobSearchRequest
 import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.dto.response.JobResult
@@ -34,6 +35,19 @@ class JobSearchService(
         require(request.tags.isNotEmpty() || request.query.isNotBlank()) {
             "tags 또는 query 중 하나는 반드시 입력해야 합니다."
         }
+        require(request.query.length <= 500) {
+            "검색 쿼리는 500자를 초과할 수 없습니다."
+        }
+
+        val userId = currentUserId()
+        if (userId != null) {
+            val todayCount = searchHistoryRepository.countByUserIdAndSearchedAtAfter(
+                userId, LocalDate.now().atStartOfDay()
+            )
+            if (todayCount >= 5) {
+                throw DailySearchLimitExceededException()
+            }
+        }
 
         log.info("[Search] 요청 - tags={}, query='{}'", request.tags, request.query)
 
@@ -48,7 +62,7 @@ class JobSearchService(
         if (listings.isEmpty()) {
             log.warn("[Search] 하이브리드 검색 결과 0건 → 빈 응답 반환")
             val response = JobSearchResponse(jobs = emptyList(), totalCount = totalCount, newTodayCount = 0)
-            saveSearchHistory(request, emptyList(), emptyMap(), currentUserId())
+            saveSearchHistory(request, emptyList(), emptyMap(), userId)
             return response
         }
 
@@ -75,7 +89,7 @@ class JobSearchService(
 
         log.info("[Search] 최종 응답 - {}건, totalCount={}, newToday={}", jobs.size, totalCount, newTodayCount)
 
-        saveSearchHistory(request, listings, aiResultMap, currentUserId())
+        saveSearchHistory(request, listings, aiResultMap, userId)
 
         return JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
     }

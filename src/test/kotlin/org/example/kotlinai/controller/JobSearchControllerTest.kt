@@ -5,8 +5,11 @@ import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.global.exception.AiServiceException
 import org.example.kotlinai.repository.JobListingRepository
+import org.example.kotlinai.repository.SearchHistoryRepository
+import org.example.kotlinai.repository.UserRepository
 import org.example.kotlinai.service.GeminiService
 import org.example.kotlinai.service.HybridSearchService
+import org.example.kotlinai.service.WantedJobClient
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -34,6 +37,15 @@ class JobSearchControllerTest {
 
     @MockBean
     private lateinit var hybridSearchService: HybridSearchService
+
+    @MockBean
+    private lateinit var searchHistoryRepository: SearchHistoryRepository
+
+    @MockBean
+    private lateinit var userRepository: UserRepository
+
+    @MockBean
+    private lateinit var wantedJobClient: WantedJobClient
 
     private val objectMapper = jacksonObjectMapper()
 
@@ -84,7 +96,7 @@ class JobSearchControllerTest {
     }
 
     @Test
-    fun `POST search returns 503 when AI service fails`() {
+    fun `POST search returns 200 with zero scores when AI service fails`() {
         whenever(geminiService.matchJobs(any(), any(), any()))
             .thenThrow(AiServiceException("Gemini API 호출 실패"))
 
@@ -94,8 +106,9 @@ class JobSearchControllerTest {
                 mapOf("tags" to listOf("React"), "query" to "")
             )
         }.andExpect {
-            status { isServiceUnavailable() }
-            jsonPath("$.status") { value(503) }
+            status { isOk() }
+            jsonPath("$.jobs") { isArray() }
+            jsonPath("$.jobs[0].match") { value(0) }
         }
     }
 }

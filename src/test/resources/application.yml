@@ -51,6 +51,22 @@ rag:
     keyword-weight: 0.5
     vector-weight: 0.5
 
+cors:
+  allowed-origins: http://localhost:5173
+
+wanted:
+  api:
+    url: https://www.wanted.co.kr/api/v4/jobs
+    timeout-seconds: 30
+    country: kr
+    job-sort: job.latest_order
+    years: "0,1"
+    locations: all
+    limit: 20
+    max-pages-per-category: 5
+    page-delay-ms: 500
+    tag-type-ids: "518,523"
+
 goyong24:
   api:
     key: test-key
