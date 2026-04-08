@@ -1,5 +1,6 @@
 package org.example.kotlinai.global.exception
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -32,6 +33,16 @@ class GlobalExceptionHandler {
     fun handleEmbeddingError(e: EmbeddingException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(ErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), e.message ?: "임베딩 서비스를 일시적으로 사용할 수 없습니다."))
+
+    @ExceptionHandler(DuplicateBookmarkException::class)
+    fun handleDuplicateBookmark(e: DuplicateBookmarkException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ErrorResponse(HttpStatus.CONFLICT.value(), e.message ?: "이미 북마크된 공고입니다."))
+
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrityViolation(e: DataIntegrityViolationException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ErrorResponse(HttpStatus.CONFLICT.value(), "중복된 데이터가 존재합니다."))
 }
 
 data class ErrorResponse(
