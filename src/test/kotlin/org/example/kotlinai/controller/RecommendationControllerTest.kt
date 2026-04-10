@@ -25,8 +25,8 @@ class RecommendationControllerTest {
     private val sampleResponse = CategoryRecommendationResponse(
         jobCategories = listOf(
             JobCategoryGroup(
-                category = "BACKEND",
-                displayName = "백엔드 개발",
+                category = "IT_DEV",
+                displayName = "IT/개발",
                 jobs = listOf(
                     JobRecommendationItem(
                         jobListingId = 1L,
@@ -69,8 +69,8 @@ class RecommendationControllerTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$.generatedAt") { value("2026-04-10") }
-                jsonPath("$.jobCategories[0].category") { value("BACKEND") }
-                jsonPath("$.jobCategories[0].displayName") { value("백엔드 개발") }
+                jsonPath("$.jobCategories[0].category") { value("IT_DEV") }
+                jsonPath("$.jobCategories[0].displayName") { value("IT/개발") }
                 jsonPath("$.jobCategories[0].jobs[0].title") { value("Spring 백엔드 개발자") }
                 jsonPath("$.jobCategories[0].jobs[0].matchScore") { value(92) }
                 jsonPath("$.activityCategories[0].category") { value("IT_CONTEST") }

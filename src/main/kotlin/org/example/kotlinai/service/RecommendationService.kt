@@ -69,33 +69,23 @@ class RecommendationService(
     )
 }
 
-private fun DailyRecommendation.toJobItem(): JobRecommendationItem {
-    val listingId = requireNotNull(jobListing) {
-        "DailyRecommendation(id=$id)에 jobListing이 없습니다."
-    }.id
-    return JobRecommendationItem(
-        jobListingId = listingId,
-        title = title,
-        company = companyOrOrganizer ?: "",
-        url = url,
-        matchScore = matchScore,
-        reason = reason,
-    )
-}
+private fun DailyRecommendation.toJobItem() = JobRecommendationItem(
+    jobListingId = requireNotNull(jobListingId) { "DailyRecommendation(id=$id)에 jobListingId가 없습니다." },
+    title = title,
+    company = companyOrOrganizer ?: "",
+    url = url,
+    matchScore = matchScore,
+    reason = reason,
+)
 
-private fun DailyRecommendation.toActivityItem(): ActivityRecommendationItem {
-    val listingId = requireNotNull(activityListing) {
-        "DailyRecommendation(id=$id)에 activityListing이 없습니다."
-    }.id
-    return ActivityRecommendationItem(
-        activityListingId = listingId,
-        title = title,
-        organizer = companyOrOrganizer ?: "",
-        category = activityCategory,
-        startDate = startDate,
-        endDate = endDate,
-        url = url,
-        matchScore = matchScore,
-        reason = reason,
-    )
-}
+private fun DailyRecommendation.toActivityItem() = ActivityRecommendationItem(
+    activityListingId = requireNotNull(activityListingId) { "DailyRecommendation(id=$id)에 activityListingId가 없습니다." },
+    title = title,
+    organizer = companyOrOrganizer ?: "",
+    category = activityCategory,
+    startDate = startDate,
+    endDate = endDate,
+    url = url,
+    matchScore = matchScore,
+    reason = reason,
+)

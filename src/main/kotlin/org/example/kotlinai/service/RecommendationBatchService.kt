@@ -18,6 +18,17 @@ class RecommendationBatchService(
     private val log = LoggerFactory.getLogger(RecommendationBatchService::class.java)
     private val isGenerating = AtomicBoolean(false)
 
+    fun generateIfEmpty() {
+        val today = LocalDate.now(ZONE_SEOUL)
+        val count = dailyRecommendationRepository.countByGeneratedAt(today)
+        if (count > 0) {
+            log.info("[Recommendation] 오늘({}) 추천 {}건 이미 존재 — 스킵", today, count)
+            return
+        }
+        log.info("[Recommendation] 오늘({}) 추천 없음 — 생성 시작", today)
+        generateDailyRecommendations()
+    }
+
     fun generateDailyRecommendations() {
         if (!isGenerating.compareAndSet(false, true)) {
             log.warn("[Recommendation] 이미 생성 중입니다. 요청 무시.")

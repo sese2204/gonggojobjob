@@ -31,6 +31,12 @@ class DailyRecommendation(
     )
     val activityListing: ActivityListing? = null,
 
+    @Column(name = "job_listing_id", insertable = false, updatable = false)
+    val jobListingId: Long? = null,
+
+    @Column(name = "activity_listing_id", insertable = false, updatable = false)
+    val activityListingId: Long? = null,
+
     @Column(nullable = false)
     val title: String,
 

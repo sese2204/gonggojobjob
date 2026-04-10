@@ -6,11 +6,11 @@ enum class RecommendationCategory(
     val searchTags: List<String>,
 ) {
     // Job categories
-    BACKEND("백엔드 개발", RecommendationType.JOB, listOf("백엔드", "Java", "Spring", "서버")),
-    FRONTEND("프론트엔드 개발", RecommendationType.JOB, listOf("프론트엔드", "React", "Vue", "JavaScript")),
-    DATA_AI("데이터/AI", RecommendationType.JOB, listOf("데이터", "머신러닝", "AI", "Python")),
-    MOBILE("모바일 개발", RecommendationType.JOB, listOf("모바일", "iOS", "Android", "Flutter")),
-    DEVOPS("DevOps/인프라", RecommendationType.JOB, listOf("DevOps", "AWS", "클라우드", "인프라")),
+    IT_DEV("IT/개발", RecommendationType.JOB, listOf("개발자", "소프트웨어", "엔지니어", "IT", "대기업", "신입", "정규직")),
+    BUSINESS("경영/사무", RecommendationType.JOB, listOf("경영", "기획", "인사", "총무", "사무", "대기업", "정규직")),
+    MARKETING("마케팅/광고", RecommendationType.JOB, listOf("마케팅", "광고", "브랜드", "홍보", "콘텐츠", "대기업", "정규직")),
+    DESIGN("디자인", RecommendationType.JOB, listOf("디자인", "UI", "UX", "그래픽", "영상", "대기업", "정규직")),
+    SALES("영업/고객관리", RecommendationType.JOB, listOf("영업", "고객", "세일즈", "CS", "대기업", "정규직")),
 
     // Activity categories
     IT_CONTEST("IT/SW 공모전", RecommendationType.ACTIVITY, listOf("IT", "소프트웨어", "해커톤", "앱", "개발")),
