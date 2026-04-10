@@ -77,6 +77,9 @@ rag:
     keyword-weight: 0.5
     vector-weight: 0.5
 
+recommendation:
+  items-per-category: 5
+
 goyong24:
   api:
     key: ${GOYONG24_API_KEY:}

@@ -43,6 +43,7 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/activities/search").permitAll()
                     .requestMatchers("/api/jobs/search/config").permitAll()
                     .requestMatchers("/api/stats").permitAll()
+                    .requestMatchers("/api/recommendations").permitAll()
                     .requestMatchers("/api/cheers/**").permitAll()
                     .requestMatchers("/api/ingestion/**").permitAll()
                     .requestMatchers("/api/activity-ingestion/**").permitAll()

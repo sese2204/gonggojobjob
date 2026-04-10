@@ -151,6 +151,41 @@ CREATE INDEX IF NOT EXISTS idx_recommended_activity_search_id
 CREATE INDEX IF NOT EXISTS idx_recommended_activity_listing_id
     ON recommended_activities (activity_listing_id);
 
+-- ===== daily_recommendations table =====
+
+CREATE TABLE IF NOT EXISTS daily_recommendations (
+    id BIGSERIAL PRIMARY KEY,
+    category VARCHAR(50) NOT NULL,
+    job_listing_id BIGINT REFERENCES job_listings(id) ON DELETE CASCADE,
+    activity_listing_id BIGINT REFERENCES activity_listings(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    company_or_organizer VARCHAR(255),
+    url TEXT NOT NULL,
+    activity_category VARCHAR(255),
+    start_date VARCHAR(255),
+    end_date VARCHAR(255),
+    match_score INT NOT NULL,
+    reason TEXT NOT NULL,
+    generated_at DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_rec_date_cat_score
+    ON daily_recommendations (generated_at, category, match_score DESC);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_daily_rec_exactly_one_listing'
+    ) THEN
+        ALTER TABLE daily_recommendations
+            ADD CONSTRAINT chk_daily_rec_exactly_one_listing
+            CHECK (
+                (job_listing_id IS NOT NULL AND activity_listing_id IS NULL) OR
+                (job_listing_id IS NULL AND activity_listing_id IS NOT NULL)
+            );
+    END IF;
+END $$;
+
 -- One-time cleanup: strip HTML tags from existing records
 UPDATE activity_listings SET title = regexp_replace(title, '<[^>]+>', '', 'g') WHERE title ~ '<[^>]+>';
 UPDATE activity_listings SET organizer = regexp_replace(organizer, '<[^>]+>', '', 'g') WHERE organizer ~ '<[^>]+>';
