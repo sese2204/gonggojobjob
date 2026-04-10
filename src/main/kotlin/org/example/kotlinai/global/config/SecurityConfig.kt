@@ -44,6 +44,7 @@ class SecurityConfig(
                     .requestMatchers("/api/stats").permitAll()
                     .requestMatchers("/api/cheers/**").permitAll()
                     .requestMatchers("/api/ingestion/**").permitAll()
+                    .requestMatchers("/api/activity-ingestion/**").permitAll()
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                     .requestMatchers(

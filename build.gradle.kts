@@ -42,6 +42,7 @@ dependencies {
     runtimeOnly("com.h2database:h2")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+    implementation("org.jsoup:jsoup:1.18.3")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-security")
     testImplementation("org.springframework.security:spring-security-test")

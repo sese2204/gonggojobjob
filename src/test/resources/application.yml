@@ -72,3 +72,23 @@ goyong24:
     key: test-key
     url: https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L21.do
     timeout-seconds: 30
+
+allcon:
+  api:
+    url: https://www.all-con.co.kr/page/ajax.contest_list.php
+    max-pages: 2
+    page-delay-ms: 0
+    page-size: 15
+
+wevity:
+  api:
+    base-url: https://www.wevity.com
+    max-pages: 2
+    page-delay-ms: 0
+
+thinkcontest:
+  api:
+    url: https://www.thinkcontest.com/thinkgood/user
+    records-per-page: 10
+    max-pages: 2
+    page-delay-ms: 0
