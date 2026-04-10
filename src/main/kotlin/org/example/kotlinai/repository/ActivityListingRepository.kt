@@ -62,6 +62,8 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
         @Param("lim") limit: Int,
     ): List<ActivityListing>
 
+    fun countByCollectedAtAfter(after: java.time.LocalDateTime): Long
+
     fun findByEmbeddingIsNull(): List<ActivityListing>
 
     @Modifying
