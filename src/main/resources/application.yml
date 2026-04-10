@@ -21,6 +21,7 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:create-drop}
     show-sql: false
+    open-in-view: false
 
   security:
     oauth2:

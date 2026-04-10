@@ -186,11 +186,3 @@ BEGIN
     END IF;
 END $$;
 
--- One-time cleanup: strip HTML tags from existing records
-UPDATE activity_listings SET title = regexp_replace(title, '<[^>]+>', '', 'g') WHERE title ~ '<[^>]+>';
-UPDATE activity_listings SET organizer = regexp_replace(organizer, '<[^>]+>', '', 'g') WHERE organizer ~ '<[^>]+>';
-UPDATE activity_listings SET category = regexp_replace(category, '<[^>]+>', '', 'g') WHERE category ~ '<[^>]+>';
-UPDATE activity_listings SET description = regexp_replace(description, '<[^>]+>', '', 'g') WHERE description ~ '<[^>]+>';
-UPDATE job_listings SET title = regexp_replace(title, '<[^>]+>', '', 'g') WHERE title ~ '<[^>]+>';
-UPDATE job_listings SET company = regexp_replace(company, '<[^>]+>', '', 'g') WHERE company ~ '<[^>]+>';
-UPDATE job_listings SET description = regexp_replace(description, '<[^>]+>', '', 'g') WHERE description ~ '<[^>]+>';
