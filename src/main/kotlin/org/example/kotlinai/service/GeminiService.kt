@@ -18,6 +18,14 @@ data class AiJobSummary(
     val description: String?,
 )
 
+data class AiActivitySummary(
+    val id: String,
+    val title: String,
+    val organizer: String,
+    val category: String?,
+    val description: String?,
+)
+
 @Service
 class GeminiService(
     private val objectMapper: ObjectMapper,
@@ -46,8 +54,15 @@ class GeminiService(
         tags: List<String>,
         query: String,
         listings: List<AiJobSummary>,
-    ): List<AiMatchResult> {
-        val prompt = buildPrompt(tags, query, listings)
+    ): List<AiMatchResult> = callGeminiApi(buildPrompt(tags, query, listings))
+
+    fun matchActivities(
+        tags: List<String>,
+        query: String,
+        listings: List<AiActivitySummary>,
+    ): List<AiMatchResult> = callGeminiApi(buildActivityPrompt(tags, query, listings))
+
+    private fun callGeminiApi(prompt: String): List<AiMatchResult> {
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf("parts" to listOf(mapOf("text" to prompt)))
@@ -110,6 +125,25 @@ class GeminiService(
             [{"id":"공고id","match":점수,"reason":"한국어 이유"}]
 
             각 공고의 id는 입력된 id 그대로 사용하세요. match는 0-100 사이의 정수이며, reason은 왜 이 공고가 사용자의 조건과 일치하거나 일치하지 않는지 1-2문장으로 설명하는 한국어 문장이어야 합니다.
+        """.trimIndent()
+    }
+
+    private fun buildActivityPrompt(tags: List<String>, query: String, listings: List<AiActivitySummary>): String {
+        val listingsJson = objectMapper.writeValueAsString(listings)
+        return """
+            당신은 공모전/대외활동 매칭 전문가입니다. 아래 사용자 검색 조건과 활동 목록을 보고, 각 활동에 대해 매칭 점수(0-100)와 한국어로 된 매칭 이유를 평가해주세요.
+
+            사용자 조건:
+            - 관심 태그: ${objectMapper.writeValueAsString(tags)}
+            - 검색어: $query
+
+            활동 목록:
+            $listingsJson
+
+            반드시 아래 형식의 JSON 배열만 반환하세요 (다른 텍스트 없이):
+            [{"id":"활동id","match":점수,"reason":"한국어 이유"}]
+
+            각 활동의 id는 입력된 id 그대로 사용하세요. match는 0-100 사이의 정수이며, reason은 왜 이 활동이 사용자의 조건과 일치하거나 일치하지 않는지 1-2문장으로 설명하는 한국어 문장이어야 합니다.
         """.trimIndent()
     }
 }

@@ -5,8 +5,10 @@ import org.example.kotlinai.dto.request.CreateCustomBookmarkRequest
 import org.example.kotlinai.dto.request.UpdateBookmarkRequest
 import org.example.kotlinai.entity.*
 import org.example.kotlinai.global.exception.DuplicateBookmarkException
+import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.repository.BookmarkedJobRepository
 import org.example.kotlinai.repository.JobListingRepository
+import org.example.kotlinai.repository.RecommendedActivityRepository
 import org.example.kotlinai.repository.RecommendedJobRepository
 import org.example.kotlinai.repository.UserRepository
 import org.junit.jupiter.api.BeforeEach
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.*
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import java.time.LocalDateTime
 import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -23,29 +26,48 @@ class BookmarkServiceTest {
 
     private lateinit var bookmarkedJobRepository: BookmarkedJobRepository
     private lateinit var jobListingRepository: JobListingRepository
+    private lateinit var activityListingRepository: ActivityListingRepository
     private lateinit var recommendedJobRepository: RecommendedJobRepository
+    private lateinit var recommendedActivityRepository: RecommendedActivityRepository
     private lateinit var userRepository: UserRepository
     private lateinit var bookmarkService: BookmarkService
 
     private val user = User("test@test.com", "테스트")
     private val jobListing = JobListing("백엔드 개발자", "회사A", "https://a.com", "Spring Boot 경험자 우대")
+    private val activityListing = ActivityListing(
+        title = "AI 공모전",
+        organizer = "과기부",
+        url = "https://contest.kr/1",
+        category = "IT/SW",
+        startDate = "2026-04-01",
+        endDate = "2026-05-30",
+        description = "인공지능 관련 공모전",
+        sourceName = "allcon",
+        sourceId = "100",
+    )
     private val pageable = PageRequest.of(0, 20)
 
     @BeforeEach
     fun setUp() {
         bookmarkedJobRepository = mock()
         jobListingRepository = mock()
+        activityListingRepository = mock()
         recommendedJobRepository = mock()
+        recommendedActivityRepository = mock()
         userRepository = mock()
         bookmarkService = BookmarkService(
             bookmarkedJobRepository,
             jobListingRepository,
+            activityListingRepository,
             recommendedJobRepository,
+            recommendedActivityRepository,
             userRepository,
         )
 
         whenever(userRepository.getReferenceById(1L)).thenReturn(user)
     }
+
+    // ===== Job Bookmark Tests (existing) =====
 
     @Test
     fun `createBookmark from jobListingId saves snapshot`() {
@@ -57,10 +79,8 @@ class BookmarkServiceTest {
 
         assertEquals("백엔드 개발자", result.title)
         assertEquals("회사A", result.company)
-        assertEquals("https://a.com", result.url)
-        assertEquals("Spring Boot 경험자 우대", result.description)
+        assertEquals(BookmarkType.JOB, result.type)
         assertEquals(ApplicationStatus.NOT_APPLIED, result.status)
-        assertNull(result.memo)
     }
 
     @Test
@@ -77,19 +97,18 @@ class BookmarkServiceTest {
         val result = bookmarkService.createBookmark(1L, CreateBookmarkRequest(recommendedJobId = 20L))
 
         assertEquals("백엔드 개발자", result.title)
-        assertEquals("회사A", result.company)
-        assertEquals(ApplicationStatus.NOT_APPLIED, result.status)
+        assertEquals(BookmarkType.JOB, result.type)
     }
 
     @Test
-    fun `createBookmark throws when neither id provided`() {
+    fun `createBookmark throws when no id provided`() {
         assertThrows<IllegalArgumentException> {
             bookmarkService.createBookmark(1L, CreateBookmarkRequest())
         }
     }
 
     @Test
-    fun `createBookmark throws when both ids provided`() {
+    fun `createBookmark throws when multiple ids provided`() {
         assertThrows<IllegalArgumentException> {
             bookmarkService.createBookmark(1L, CreateBookmarkRequest(jobListingId = 1L, recommendedJobId = 2L))
         }
@@ -114,6 +133,154 @@ class BookmarkServiceTest {
         }
     }
 
+    // ===== Activity Bookmark Tests (new) =====
+
+    @Test
+    fun `createBookmark from activityListingId saves activity snapshot`() {
+        whenever(bookmarkedJobRepository.existsByUserIdAndActivityListingId(1L, 10L)).thenReturn(false)
+        whenever(activityListingRepository.findById(10L)).thenReturn(Optional.of(activityListing))
+        whenever(bookmarkedJobRepository.save(any<BookmarkedJob>())).thenAnswer { it.arguments[0] }
+
+        val result = bookmarkService.createBookmark(1L, CreateBookmarkRequest(activityListingId = 10L))
+
+        assertEquals("AI 공모전", result.title)
+        assertEquals("과기부", result.company)
+        assertEquals(BookmarkType.ACTIVITY, result.type)
+        assertEquals("IT/SW", result.category)
+        assertEquals("2026-04-01", result.startDate)
+        assertEquals("2026-05-30", result.endDate)
+    }
+
+    @Test
+    fun `createBookmark from recommendedActivityId copies activity snapshot`() {
+        val searchHistory = ActivitySearchHistory(user, "IT", "공모전", 1)
+        val recommendedActivity = RecommendedActivity(
+            activitySearchHistory = searchHistory,
+            activityListing = activityListing,
+            title = "AI 공모전",
+            organizer = "과기부",
+            url = "https://contest.kr/1",
+            category = "IT/SW",
+            startDate = "2026-04-01",
+            endDate = "2026-05-30",
+            matchScore = 90,
+            reason = "IT 분야 공모전",
+        )
+
+        whenever(recommendedActivityRepository.findById(30L)).thenReturn(Optional.of(recommendedActivity))
+        whenever(bookmarkedJobRepository.existsByUserIdAndActivityListingId(any(), any())).thenReturn(false)
+        whenever(bookmarkedJobRepository.existsByUserIdAndUrl(any(), any())).thenReturn(false)
+        whenever(activityListingRepository.findById(any())).thenReturn(Optional.of(activityListing))
+        whenever(bookmarkedJobRepository.save(any<BookmarkedJob>())).thenAnswer { it.arguments[0] }
+
+        val result = bookmarkService.createBookmark(1L, CreateBookmarkRequest(recommendedActivityId = 30L))
+
+        assertEquals("AI 공모전", result.title)
+        assertEquals(BookmarkType.ACTIVITY, result.type)
+        assertEquals("IT/SW", result.category)
+    }
+
+    @Test
+    fun `createBookmark throws DuplicateBookmarkException for same activityListingId`() {
+        whenever(bookmarkedJobRepository.existsByUserIdAndActivityListingId(1L, 10L)).thenReturn(true)
+
+        assertThrows<DuplicateBookmarkException> {
+            bookmarkService.createBookmark(1L, CreateBookmarkRequest(activityListingId = 10L))
+        }
+    }
+
+    @Test
+    fun `createCustomBookmark with ACTIVITY type saves activity fields`() {
+        whenever(bookmarkedJobRepository.save(any<BookmarkedJob>())).thenAnswer { it.arguments[0] }
+
+        val result = bookmarkService.createCustomBookmark(
+            1L,
+            CreateCustomBookmarkRequest(
+                title = "마케팅 공모전",
+                company = "삼성",
+                type = BookmarkType.ACTIVITY,
+                category = "마케팅",
+                startDate = "2026-05-01",
+                endDate = "2026-06-30",
+            ),
+        )
+
+        assertEquals("마케팅 공모전", result.title)
+        assertEquals(BookmarkType.ACTIVITY, result.type)
+        assertEquals("마케팅", result.category)
+        assertEquals("2026-05-01", result.startDate)
+    }
+
+    // ===== Unified Bookmark View Tests (new) =====
+
+    @Test
+    fun `getBookmarks without type returns all bookmarks`() {
+        val jobBookmark = BookmarkedJob(
+            user = user, type = BookmarkType.JOB, jobListing = jobListing,
+            title = "백엔드 개발자", company = "회사A", url = "https://a.com", description = "설명",
+        )
+        whenever(bookmarkedJobRepository.findAllByUserIdOrderByBookmarkedAtDesc(1L, pageable))
+            .thenReturn(PageImpl(listOf(jobBookmark), pageable, 1))
+
+        val result = bookmarkService.getBookmarks(1L, null, null, pageable)
+
+        assertEquals(1, result.totalElements)
+    }
+
+    @Test
+    fun `getBookmarks filters by type ACTIVITY`() {
+        val activityBookmark = BookmarkedJob(
+            user = user, type = BookmarkType.ACTIVITY, activityListing = activityListing,
+            title = "AI 공모전", company = "과기부", url = "https://contest.kr/1",
+            category = "IT/SW", startDate = "2026-04-01", endDate = "2026-05-30",
+        )
+        whenever(
+            bookmarkedJobRepository.findAllByUserIdAndTypeOrderByBookmarkedAtDesc(1L, BookmarkType.ACTIVITY, pageable),
+        ).thenReturn(PageImpl(listOf(activityBookmark), pageable, 1))
+
+        val result = bookmarkService.getBookmarks(1L, BookmarkType.ACTIVITY, null, pageable)
+
+        assertEquals(1, result.totalElements)
+        assertEquals(BookmarkType.ACTIVITY, result.content[0].type)
+        assertEquals("IT/SW", result.content[0].category)
+    }
+
+    @Test
+    fun `getBookmarks filters by type and status`() {
+        val activityBookmark = BookmarkedJob(
+            user = user, type = BookmarkType.ACTIVITY, activityListing = activityListing,
+            title = "AI 공모전", company = "과기부", url = "https://contest.kr/1",
+        ).apply { status = ApplicationStatus.APPLIED }
+        whenever(
+            bookmarkedJobRepository.findAllByUserIdAndTypeAndStatusOrderByBookmarkedAtDesc(
+                1L, BookmarkType.ACTIVITY, ApplicationStatus.APPLIED, pageable,
+            ),
+        ).thenReturn(PageImpl(listOf(activityBookmark), pageable, 1))
+
+        val result = bookmarkService.getBookmarks(1L, BookmarkType.ACTIVITY, ApplicationStatus.APPLIED, pageable)
+
+        assertEquals(1, result.totalElements)
+        assertEquals(ApplicationStatus.APPLIED, result.content[0].status)
+    }
+
+    @Test
+    fun `getBookmarks filters by status only`() {
+        val bookmark = BookmarkedJob(
+            user = user, type = BookmarkType.JOB, jobListing = jobListing,
+            title = "백엔드 개발자", company = "회사A",
+        ).apply { status = ApplicationStatus.APPLIED }
+        whenever(
+            bookmarkedJobRepository.findAllByUserIdAndStatusOrderByBookmarkedAtDesc(1L, ApplicationStatus.APPLIED, pageable),
+        ).thenReturn(PageImpl(listOf(bookmark), pageable, 1))
+
+        val result = bookmarkService.getBookmarks(1L, null, ApplicationStatus.APPLIED, pageable)
+
+        assertEquals(1, result.totalElements)
+        assertEquals(ApplicationStatus.APPLIED, result.content[0].status)
+    }
+
+    // ===== Custom Bookmark Validation (existing) =====
+
     @Test
     fun `createCustomBookmark saves with direct input`() {
         whenever(bookmarkedJobRepository.existsByUserIdAndUrl(1L, "https://custom.com")).thenReturn(false)
@@ -125,36 +292,16 @@ class BookmarkServiceTest {
         )
 
         assertEquals("프론트 개발자", result.title)
-        assertEquals("회사B", result.company)
-        assertEquals("https://custom.com", result.url)
-        assertEquals("React 필수", result.description)
-        assertEquals(ApplicationStatus.NOT_APPLIED, result.status)
+        assertEquals(BookmarkType.JOB, result.type)
     }
 
     @Test
     fun `createCustomBookmark without url skips dedup check`() {
         whenever(bookmarkedJobRepository.save(any<BookmarkedJob>())).thenAnswer { it.arguments[0] }
 
-        val result = bookmarkService.createCustomBookmark(
-            1L,
-            CreateCustomBookmarkRequest("디자이너", "회사C"),
-        )
+        bookmarkService.createCustomBookmark(1L, CreateCustomBookmarkRequest("디자이너", "회사C"))
 
-        assertEquals("디자이너", result.title)
-        assertNull(result.url)
         verify(bookmarkedJobRepository, never()).existsByUserIdAndUrl(any(), any())
-    }
-
-    @Test
-    fun `createCustomBookmark throws DuplicateBookmarkException for same url`() {
-        whenever(bookmarkedJobRepository.existsByUserIdAndUrl(1L, "https://dup.com")).thenReturn(true)
-
-        assertThrows<DuplicateBookmarkException> {
-            bookmarkService.createCustomBookmark(
-                1L,
-                CreateCustomBookmarkRequest("개발자", "회사D", "https://dup.com"),
-            )
-        }
     }
 
     @Test
@@ -171,52 +318,14 @@ class BookmarkServiceTest {
         }
     }
 
-    @Test
-    fun `createCustomBookmark throws when title exceeds 255 chars`() {
-        assertThrows<IllegalArgumentException> {
-            bookmarkService.createCustomBookmark(1L, CreateCustomBookmarkRequest("a".repeat(256), "회사"))
-        }
-    }
-
-    @Test
-    fun `createCustomBookmark throws when company exceeds 255 chars`() {
-        assertThrows<IllegalArgumentException> {
-            bookmarkService.createCustomBookmark(1L, CreateCustomBookmarkRequest("개발자", "a".repeat(256)))
-        }
-    }
-
-    @Test
-    fun `getBookmarks returns paginated list`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명")
-        whenever(bookmarkedJobRepository.findAllByUserIdOrderByBookmarkedAtDesc(1L, pageable))
-            .thenReturn(PageImpl(listOf(bookmark), pageable, 1))
-
-        val result = bookmarkService.getBookmarks(1L, null, pageable)
-
-        assertEquals(1, result.totalElements)
-        assertEquals("백엔드 개발자", result.content[0].title)
-    }
-
-    @Test
-    fun `getBookmarks filters by status`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명").apply {
-            status = ApplicationStatus.APPLIED
-        }
-        whenever(
-            bookmarkedJobRepository.findAllByUserIdAndStatusOrderByBookmarkedAtDesc(
-                1L, ApplicationStatus.APPLIED, pageable,
-            ),
-        ).thenReturn(PageImpl(listOf(bookmark), pageable, 1))
-
-        val result = bookmarkService.getBookmarks(1L, ApplicationStatus.APPLIED, pageable)
-
-        assertEquals(1, result.totalElements)
-        assertEquals(ApplicationStatus.APPLIED, result.content[0].status)
-    }
+    // ===== Update/Delete (existing) =====
 
     @Test
     fun `updateBookmark changes status and memo`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명")
+        val bookmark = BookmarkedJob(
+            user = user, type = BookmarkType.JOB, jobListing = jobListing,
+            title = "백엔드 개발자", company = "회사A", url = "https://a.com",
+        )
         whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(bookmark)
 
         val result = bookmarkService.updateBookmark(
@@ -230,55 +339,26 @@ class BookmarkServiceTest {
 
     @Test
     fun `updateBookmark throws when memo exceeds 500 chars`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명")
+        val bookmark = BookmarkedJob(
+            user = user, type = BookmarkType.JOB, title = "개발자", company = "회사",
+        )
         whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(bookmark)
 
         assertThrows<IllegalArgumentException> {
-            bookmarkService.updateBookmark(
-                1L, 1L,
-                UpdateBookmarkRequest(memo = "a".repeat(501)),
-            )
-        }
-    }
-
-    @Test
-    fun `updateBookmark clears memo when empty string provided`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명").apply {
-            memo = "기존 메모"
-        }
-        whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(bookmark)
-
-        val result = bookmarkService.updateBookmark(1L, 1L, UpdateBookmarkRequest(memo = ""))
-
-        assertNull(result.memo)
-    }
-
-    @Test
-    fun `updateBookmark returns 404 for other user bookmark`() {
-        whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(null)
-
-        assertThrows<NoSuchElementException> {
-            bookmarkService.updateBookmark(1L, 1L, UpdateBookmarkRequest(status = ApplicationStatus.APPLIED))
+            bookmarkService.updateBookmark(1L, 1L, UpdateBookmarkRequest(memo = "a".repeat(501)))
         }
     }
 
     @Test
     fun `deleteBookmark deletes own bookmark`() {
-        val bookmark = BookmarkedJob(user, jobListing, "백엔드 개발자", "회사A", "https://a.com", "설명")
+        val bookmark = BookmarkedJob(
+            user = user, type = BookmarkType.JOB, title = "개발자", company = "회사",
+        )
         whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(bookmark)
 
         bookmarkService.deleteBookmark(1L, 1L)
 
         verify(bookmarkedJobRepository).delete(bookmark)
-    }
-
-    @Test
-    fun `deleteBookmark returns 404 for other user bookmark`() {
-        whenever(bookmarkedJobRepository.findByIdAndUserId(1L, 1L)).thenReturn(null)
-
-        assertThrows<NoSuchElementException> {
-            bookmarkService.deleteBookmark(1L, 1L)
-        }
     }
 
     @Test

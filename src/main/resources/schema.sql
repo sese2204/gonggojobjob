@@ -90,3 +90,63 @@ CREATE INDEX IF NOT EXISTS idx_activity_title_trgm
 
 CREATE INDEX IF NOT EXISTS idx_activity_desc_trgm
     ON activity_listings USING GIN (description gin_trgm_ops);
+
+-- ===== bookmarked_jobs table extensions for activity bookmarks =====
+
+ALTER TABLE bookmarked_jobs ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'JOB' NOT NULL;
+ALTER TABLE bookmarked_jobs ADD COLUMN IF NOT EXISTS activity_listing_id BIGINT;
+ALTER TABLE bookmarked_jobs ADD COLUMN IF NOT EXISTS category VARCHAR(255);
+ALTER TABLE bookmarked_jobs ADD COLUMN IF NOT EXISTS start_date VARCHAR(255);
+ALTER TABLE bookmarked_jobs ADD COLUMN IF NOT EXISTS end_date VARCHAR(255);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_bookmarked_activity_listing'
+    ) THEN
+        ALTER TABLE bookmarked_jobs
+            ADD CONSTRAINT fk_bookmarked_activity_listing
+            FOREIGN KEY (activity_listing_id) REFERENCES activity_listings(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_bookmarked_job_user_activity
+    ON bookmarked_jobs (user_id, activity_listing_id) WHERE activity_listing_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_bookmarked_job_type ON bookmarked_jobs (type);
+
+-- ===== activity_search_histories table =====
+
+CREATE TABLE IF NOT EXISTS activity_search_histories (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    tags_string VARCHAR(255),
+    query VARCHAR(500),
+    result_count INT NOT NULL DEFAULT 0,
+    searched_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_search_history_user_id
+    ON activity_search_histories (user_id);
+
+-- ===== recommended_activities table =====
+
+CREATE TABLE IF NOT EXISTS recommended_activities (
+    id BIGSERIAL PRIMARY KEY,
+    activity_search_history_id BIGINT NOT NULL REFERENCES activity_search_histories(id) ON DELETE CASCADE,
+    activity_listing_id BIGINT NOT NULL REFERENCES activity_listings(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    organizer VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    category VARCHAR(255),
+    start_date VARCHAR(255),
+    end_date VARCHAR(255),
+    match_score INT NOT NULL,
+    reason TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recommended_activity_search_id
+    ON recommended_activities (activity_search_history_id);
+
+CREATE INDEX IF NOT EXISTS idx_recommended_activity_listing_id
+    ON recommended_activities (activity_listing_id);

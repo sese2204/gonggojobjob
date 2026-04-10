@@ -18,6 +18,50 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
         @Param("sourceIds") sourceIds: List<String>,
     )
 
+    // Vector similarity search (pgvector cosine distance)
+    @Query(
+        value = """
+            SELECT * FROM activity_listings
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> CAST(:queryVector AS vector)
+            LIMIT :lim
+        """,
+        nativeQuery = true,
+    )
+    fun findByVectorSimilarity(
+        @Param("queryVector") queryVector: String,
+        @Param("lim") limit: Int,
+    ): List<ActivityListing>
+
+    // Full-text keyword search (tsvector)
+    @Query(
+        value = """
+            SELECT * FROM activity_listings
+            WHERE search_vector @@ to_tsquery('simple', :query)
+            ORDER BY ts_rank(search_vector, to_tsquery('simple', :query)) DESC
+            LIMIT :lim
+        """,
+        nativeQuery = true,
+    )
+    fun findByKeyword(
+        @Param("query") query: String,
+        @Param("lim") limit: Int,
+    ): List<ActivityListing>
+
+    // Trigram fallback for substring matching
+    @Query(
+        value = """
+            SELECT * FROM activity_listings
+            WHERE title ILIKE :pattern OR description ILIKE :pattern
+            LIMIT :lim
+        """,
+        nativeQuery = true,
+    )
+    fun findByKeywordLike(
+        @Param("pattern") pattern: String,
+        @Param("lim") limit: Int,
+    ): List<ActivityListing>
+
     fun findByEmbeddingIsNull(): List<ActivityListing>
 
     @Modifying
