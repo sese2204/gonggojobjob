@@ -3,6 +3,7 @@ package org.example.kotlinai.controller
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.example.kotlinai.dto.response.BookmarkResponse
 import org.example.kotlinai.entity.ApplicationStatus
+import org.example.kotlinai.entity.BookmarkType
 import org.example.kotlinai.global.exception.DuplicateBookmarkException
 import org.example.kotlinai.service.BookmarkService
 import org.junit.jupiter.api.BeforeEach
@@ -43,11 +44,16 @@ class BookmarkControllerTest {
 
     private val sampleBookmark = BookmarkResponse(
         id = 1L,
+        type = BookmarkType.JOB,
         jobListingId = 10L,
+        activityListingId = null,
         title = "백엔드 개발자",
         company = "회사A",
         url = "https://a.com",
         description = "Spring Boot 경험자 우대",
+        category = null,
+        startDate = null,
+        endDate = null,
         status = ApplicationStatus.NOT_APPLIED,
         memo = null,
         bookmarkedAt = LocalDateTime.of(2026, 4, 8, 12, 0),
@@ -109,7 +115,7 @@ class BookmarkControllerTest {
 
     @Test
     fun `GET bookmarks returns paginated list`() {
-        whenever(bookmarkService.getBookmarks(eq(1L), eq(null), any()))
+        whenever(bookmarkService.getBookmarks(eq(1L), eq(null), eq(null), any()))
             .thenReturn(PageImpl(listOf(sampleBookmark)))
 
         mockMvc.get("/api/bookmarks") {
@@ -124,7 +130,7 @@ class BookmarkControllerTest {
     @Test
     fun `GET bookmarks with status filter`() {
         val appliedBookmark = sampleBookmark.copy(status = ApplicationStatus.APPLIED)
-        whenever(bookmarkService.getBookmarks(eq(1L), eq(ApplicationStatus.APPLIED), any()))
+        whenever(bookmarkService.getBookmarks(eq(1L), eq(null), eq(ApplicationStatus.APPLIED), any()))
             .thenReturn(PageImpl(listOf(appliedBookmark)))
 
         mockMvc.get("/api/bookmarks") {

@@ -22,6 +22,10 @@ class BookmarkedJob(
     @JoinColumn(name = "user_id", nullable = false)
     val user: User,
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val type: BookmarkType = BookmarkType.JOB,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "job_listing_id",
@@ -31,6 +35,16 @@ class BookmarkedJob(
         ),
     )
     val jobListing: JobListing? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "activity_listing_id",
+        foreignKey = ForeignKey(
+            name = "fk_bookmarked_activity_listing",
+            foreignKeyDefinition = "FOREIGN KEY (activity_listing_id) REFERENCES activity_listings(id) ON DELETE SET NULL",
+        ),
+    )
+    val activityListing: ActivityListing? = null,
 
     @Column(nullable = false)
     val title: String,
@@ -43,6 +57,12 @@ class BookmarkedJob(
 
     @Column(columnDefinition = "TEXT")
     val description: String? = null,
+
+    val category: String? = null,
+
+    val startDate: String? = null,
+
+    val endDate: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -40,6 +40,7 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(HttpMethod.POST, "/api/jobs/search").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/activities/search").permitAll()
                     .requestMatchers("/api/jobs/search/config").permitAll()
                     .requestMatchers("/api/stats").permitAll()
                     .requestMatchers("/api/cheers/**").permitAll()

@@ -11,6 +11,7 @@ import org.example.kotlinai.dto.request.CreateCustomBookmarkRequest
 import org.example.kotlinai.dto.request.UpdateBookmarkRequest
 import org.example.kotlinai.dto.response.BookmarkResponse
 import org.example.kotlinai.entity.ApplicationStatus
+import org.example.kotlinai.entity.BookmarkType
 import org.example.kotlinai.global.exception.ErrorResponse
 import org.example.kotlinai.service.BookmarkService
 import org.springframework.data.domain.Page
@@ -72,14 +73,15 @@ class BookmarkController(
 
     @Operation(
         summary = "북마크 목록 조회",
-        description = "사용자의 북마크 목록을 최신순으로 조회합니다. status 파라미터로 필터링 가능합니다.",
+        description = "사용자의 북마크 목록을 최신순으로 조회합니다. type(JOB/ACTIVITY) 및 status 파라미터로 필터링 가능합니다.",
     )
     @GetMapping
     fun getBookmarks(
         @AuthenticationPrincipal userId: Long,
+        @RequestParam(required = false) type: BookmarkType?,
         @RequestParam(required = false) status: ApplicationStatus?,
         @PageableDefault(size = 20) pageable: Pageable,
-    ): Page<BookmarkResponse> = bookmarkService.getBookmarks(userId, status, pageable)
+    ): Page<BookmarkResponse> = bookmarkService.getBookmarks(userId, type, status, pageable)
 
     @Operation(
         summary = "북마크 수정",
