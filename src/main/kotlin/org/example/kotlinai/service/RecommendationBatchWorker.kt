@@ -105,7 +105,7 @@ private fun JobListing.toDailyRecommendation(
     date: LocalDate,
 ) = DailyRecommendation(
     category = category,
-    jobListing = this,
+    jobListingId = id,
     title = title,
     companyOrOrganizer = company,
     url = url,
@@ -120,7 +120,7 @@ private fun ActivityListing.toDailyRecommendation(
     date: LocalDate,
 ) = DailyRecommendation(
     category = category,
-    activityListing = this,
+    activityListingId = id,
     title = title,
     companyOrOrganizer = organizer,
     url = url,

@@ -186,3 +186,7 @@ BEGIN
     END IF;
 END $$;
 
+-- Clean up rows with old category values after enum rename
+DELETE FROM daily_recommendations
+WHERE category NOT IN ('IT_DEV', 'BUSINESS', 'MARKETING', 'DESIGN', 'SALES',
+                       'IT_CONTEST', 'MARKETING_CONTEST', 'VOLUNTEER', 'GLOBAL', 'ACADEMIC');

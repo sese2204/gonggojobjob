@@ -11,30 +11,10 @@ class DailyRecommendation(
     @Column(nullable = false, length = 50)
     val category: RecommendationCategory,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-        name = "job_listing_id",
-        foreignKey = ForeignKey(
-            name = "fk_daily_rec_job_listing",
-            foreignKeyDefinition = "FOREIGN KEY (job_listing_id) REFERENCES job_listings(id) ON DELETE CASCADE",
-        ),
-    )
-    val jobListing: JobListing? = null,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-        name = "activity_listing_id",
-        foreignKey = ForeignKey(
-            name = "fk_daily_rec_activity_listing",
-            foreignKeyDefinition = "FOREIGN KEY (activity_listing_id) REFERENCES activity_listings(id) ON DELETE CASCADE",
-        ),
-    )
-    val activityListing: ActivityListing? = null,
-
-    @Column(name = "job_listing_id", insertable = false, updatable = false)
+    @Column(name = "job_listing_id")
     val jobListingId: Long? = null,
 
-    @Column(name = "activity_listing_id", insertable = false, updatable = false)
+    @Column(name = "activity_listing_id")
     val activityListingId: Long? = null,
 
     @Column(nullable = false)
@@ -66,8 +46,8 @@ class DailyRecommendation(
     val id: Long = 0
 
     init {
-        require((jobListing == null) != (activityListing == null)) {
-            "jobListing 또는 activityListing 중 정확히 하나만 설정해야 합니다."
+        require((jobListingId == null) != (activityListingId == null)) {
+            "jobListingId 또는 activityListingId 중 정확히 하나만 설정해야 합니다."
         }
     }
 }
