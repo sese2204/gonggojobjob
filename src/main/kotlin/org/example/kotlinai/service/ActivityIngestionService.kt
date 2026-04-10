@@ -7,6 +7,8 @@ import org.example.kotlinai.entity.IngestionRun
 import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.repository.IngestionRunRepository
 import org.example.kotlinai.service.EmbeddingService.Companion.toVectorString
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -142,13 +144,13 @@ class ActivityIngestionService(
                 try {
                     val listing = activityListingSaver.save(
                         ActivityListing(
-                            title = dto.title,
-                            organizer = dto.organizer,
+                            title = stripHtml(dto.title),
+                            organizer = stripHtml(dto.organizer),
                             url = dto.url,
-                            category = dto.category,
+                            category = dto.category?.let { stripHtml(it) },
                             startDate = dto.startDate,
                             endDate = dto.endDate,
-                            description = dto.description,
+                            description = dto.description?.let { stripHtml(it) },
                             sourceName = client.sourceName(),
                             sourceId = dto.sourceId,
                         ),
@@ -211,6 +213,9 @@ class ActivityIngestionService(
             .filter { it.isNotBlank() }
             .joinToString(" ")
 }
+
+private fun stripHtml(text: String): String =
+    Jsoup.clean(text, Safelist.none()).trim()
 
 fun IngestionRun.toActivityResponse() = ActivityIngestionResponse(
     sourceName = sourceName,

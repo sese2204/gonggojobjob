@@ -7,6 +7,8 @@ import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.repository.IngestionRunRepository
 import org.example.kotlinai.repository.JobListingRepository
 import org.example.kotlinai.service.EmbeddingService.Companion.toVectorString
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -146,13 +148,13 @@ class JobIngestionService(
                 try {
                     val listing = jobListingSaver.save(
                         JobListing(
-                            title = dto.title,
-                            company = dto.company,
+                            title = stripHtml(dto.title),
+                            company = stripHtml(dto.company),
                             url = dto.url,
-                            description = dto.description,
+                            description = dto.description?.let { stripHtml(it) },
                             sourceName = client.sourceName(),
                             sourceId = dto.sourceId,
-                        )
+                        ),
                     )
                     newListings.add(listing)
                     newCount++
@@ -214,6 +216,9 @@ class JobIngestionService(
             .filter { it.isNotBlank() }
             .joinToString(" ")
 }
+
+private fun stripHtml(text: String): String =
+    Jsoup.clean(text, Safelist.none()).trim()
 
 fun IngestionRun.toResponse() = JobIngestionResponse(
     sourceName = sourceName,
