@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface IngestionRunRepository : JpaRepository<IngestionRun, Long> {
     fun findTop10ByOrderByStartedAtDesc(): List<IngestionRun>
+    fun findTop10BySourceNameInOrderByStartedAtDesc(sourceNames: Set<String>): List<IngestionRun>
 }

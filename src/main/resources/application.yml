@@ -95,3 +95,23 @@ wanted:
     max-pages-per-category: ${WANTED_MAX_PAGES_PER_CATEGORY:5}
     page-delay-ms: ${WANTED_PAGE_DELAY_MS:500}
     tag-type-ids: ${WANTED_TAG_TYPE_IDS:518,523,511,507,530,508,517,513,510}
+
+allcon:
+  api:
+    url: https://www.all-con.co.kr/page/ajax.contest_list.php
+    max-pages: ${ALLCON_MAX_PAGES:20}
+    page-delay-ms: ${ALLCON_PAGE_DELAY_MS:300}
+    page-size: ${ALLCON_PAGE_SIZE:15}
+
+wevity:
+  api:
+    base-url: https://www.wevity.com
+    max-pages: ${WEVITY_MAX_PAGES:10}
+    page-delay-ms: ${WEVITY_PAGE_DELAY_MS:500}
+
+thinkcontest:
+  api:
+    url: https://www.thinkcontest.com/thinkgood/user
+    records-per-page: ${THINKCONTEST_RECORDS_PER_PAGE:10}
+    max-pages: ${THINKCONTEST_MAX_PAGES:20}
+    page-delay-ms: ${THINKCONTEST_PAGE_DELAY_MS:300}
