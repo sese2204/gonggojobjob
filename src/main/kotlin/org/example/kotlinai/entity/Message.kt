@@ -12,7 +12,7 @@ class Message(
     val conversation: Conversation,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     val role: MessageRole,
 
     @Column(nullable = false, columnDefinition = "TEXT")

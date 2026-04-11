@@ -23,7 +23,7 @@ class BookmarkedJob(
     val user: User,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     val type: BookmarkType = BookmarkType.JOB,
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -65,7 +65,7 @@ class BookmarkedJob(
     val endDate: String? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     var status: ApplicationStatus = ApplicationStatus.NOT_APPLIED,
 
     @Column(length = 500)

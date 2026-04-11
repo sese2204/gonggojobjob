@@ -8,7 +8,7 @@ import java.time.LocalDate
 class DailyRecommendation(
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
     val category: RecommendationCategory,
 
     @Column(name = "job_listing_id")
