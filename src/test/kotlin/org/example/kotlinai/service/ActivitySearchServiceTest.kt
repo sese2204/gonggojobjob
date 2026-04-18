@@ -34,6 +34,7 @@ class ActivitySearchServiceTest {
     private lateinit var activityHybridSearchService: ActivityHybridSearchService
     private lateinit var userRepository: UserRepository
     private lateinit var activitySearchHistoryRepository: ActivitySearchHistoryRepository
+    private lateinit var searchCacheService: SearchCacheService
     private lateinit var activitySearchService: ActivitySearchService
     private val ragProperties = RagProperties()
 
@@ -59,9 +60,10 @@ class ActivitySearchServiceTest {
         activityHybridSearchService = mock()
         userRepository = mock()
         activitySearchHistoryRepository = mock()
+        searchCacheService = SearchCacheService()
         activitySearchService = ActivitySearchService(
             activityListingRepository, geminiService, activityHybridSearchService,
-            ragProperties, userRepository, activitySearchHistoryRepository,
+            ragProperties, userRepository, activitySearchHistoryRepository, searchCacheService,
         )
         SecurityContextHolder.clearContext()
     }
@@ -195,7 +197,7 @@ class ActivitySearchServiceTest {
     @Test
     fun `search throws DailySearchLimitExceededException when limit reached`() {
         setAuthenticatedUser(1L)
-        whenever(activitySearchHistoryRepository.countByUserIdAndSearchedAtAfter(any(), any())).thenReturn(5L)
+        whenever(activitySearchHistoryRepository.countByUserIdAndSearchedAtAfter(any(), any())).thenReturn(15L)
 
         assertThrows<DailySearchLimitExceededException> {
             activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))

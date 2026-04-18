@@ -39,6 +39,10 @@ out/
 ### Kotlin ###
 .kotlin
 
+### Eval artifacts (generated locally, not checked in) ###
+src/test/resources/eval/results/*.json
+src/test/resources/eval/labeling/
+
 ### Speckit ###
 .specify/
 .claude/

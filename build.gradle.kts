@@ -48,6 +48,7 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -63,6 +64,36 @@ allOpen {
     annotation("jakarta.persistence.Embeddable")
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+tasks.named<Test>("test") {
+    // Default `./gradlew test` excludes eval tests (they need real DB + Gemini).
+    useJUnitPlatform {
+        excludeTags("eval", "eval-label")
+    }
+}
+
+tasks.register<Test>("evalTest") {
+    description = "Runs the search eval harness (requires EVAL_LABEL env var; DB/Gemini settings in application-eval.yml)."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("eval") }
+    shouldRunAfter(tasks.named("test"))
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "failed", "skipped", "standardOut")
+        showStandardStreams = true
+    }
+}
+
+tasks.register<Test>("evalLabel") {
+    description = "Runs the labeling candidate generator (DB/Gemini settings in application-eval.yml)."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("eval-label") }
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "failed", "skipped", "standardOut")
+        showStandardStreams = true
+    }
 }

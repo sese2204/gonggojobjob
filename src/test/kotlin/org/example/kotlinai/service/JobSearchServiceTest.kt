@@ -33,6 +33,7 @@ class JobSearchServiceTest {
     private lateinit var hybridSearchService: HybridSearchService
     private lateinit var userRepository: UserRepository
     private lateinit var searchHistoryRepository: SearchHistoryRepository
+    private lateinit var searchCacheService: SearchCacheService
     private lateinit var jobSearchService: JobSearchService
     private val ragProperties = RagProperties()
 
@@ -49,7 +50,8 @@ class JobSearchServiceTest {
         hybridSearchService = mock()
         userRepository = mock()
         searchHistoryRepository = mock()
-        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository)
+        searchCacheService = SearchCacheService()
+        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository, searchCacheService)
         SecurityContextHolder.clearContext()
     }
 

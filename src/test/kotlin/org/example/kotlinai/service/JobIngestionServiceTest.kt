@@ -23,12 +23,14 @@ class JobIngestionServiceTest {
     private val ingestionRunRepository: IngestionRunRepository = mock()
     private val embeddingService: EmbeddingService = mock()
     private val jobListingSaver: JobListingSaver = mock()
+    private val embeddingUpdater: EmbeddingUpdater = mock()
     private val service = JobIngestionService(
         clients = listOf(mockClient),
         jobListingRepository = jobListingRepository,
         ingestionRunRepository = ingestionRunRepository,
         embeddingService = embeddingService,
         jobListingSaver = jobListingSaver,
+        embeddingUpdater = embeddingUpdater,
     )
 
     private fun stubSave() {
@@ -95,6 +97,7 @@ class JobIngestionServiceTest {
             ingestionRunRepository = ingestionRunRepository,
             embeddingService = embeddingService,
             jobListingSaver = jobListingSaver,
+            embeddingUpdater = embeddingUpdater,
         )
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())
