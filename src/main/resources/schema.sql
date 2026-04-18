@@ -33,6 +33,11 @@ ALTER TABLE job_listings ADD COLUMN IF NOT EXISTS search_vector tsvector
         to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(company, '') || ' ' || coalesce(description, ''))
     ) STORED;;
 
+-- Deadline column for expiry-based filtering
+ALTER TABLE job_listings ADD COLUMN IF NOT EXISTS deadline DATE;;
+
+CREATE INDEX IF NOT EXISTS idx_job_deadline ON job_listings (deadline);;
+
 -- HNSW index for vector similarity search
 CREATE INDEX IF NOT EXISTS idx_job_embedding_hnsw
     ON job_listings USING hnsw (embedding vector_cosine_ops)
@@ -67,6 +72,10 @@ CREATE TABLE IF NOT EXISTS activity_listings (
     embedding_model VARCHAR(255),
     UNIQUE (source_name, source_id)
 );;
+
+ALTER TABLE activity_listings ADD COLUMN IF NOT EXISTS deadline DATE;;
+
+CREATE INDEX IF NOT EXISTS idx_activity_deadline ON activity_listings (deadline);;
 
 ALTER TABLE activity_listings ADD COLUMN IF NOT EXISTS embedding vector(768);;
 

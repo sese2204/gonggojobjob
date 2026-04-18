@@ -27,6 +27,7 @@ class Goyong24JobClient(
     private val pageSize = 100
 
     override fun sourceName() = "goyong24"
+    override fun supportsFullSync() = true
 
     override fun fetchJobs(): List<ExternalJobDto> {
         require(apiKey.isNotBlank()) { "고용24 API 키가 설정되지 않았습니다. GOYONG24_API_KEY 환경 변수를 확인하세요." }
@@ -58,6 +59,7 @@ class Goyong24JobClient(
                         company = job.empBusiNm,
                         url = job.empWantedHomepgDetail,
                         description = buildDescription(job),
+                        deadline = job.empWantedEndt,
                     )
                 }
                 allJobs.addAll(jobs)

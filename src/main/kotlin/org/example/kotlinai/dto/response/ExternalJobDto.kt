@@ -6,4 +6,5 @@ data class ExternalJobDto(
     val company: String,
     val url: String,
     val description: String? = null,
+    val deadline: String? = null,
 )

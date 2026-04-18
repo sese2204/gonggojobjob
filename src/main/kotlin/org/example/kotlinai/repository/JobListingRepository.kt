@@ -5,17 +5,19 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.LocalDate
 
 interface JobListingRepository : JpaRepository<JobListing, Long> {
     fun findTop10ByOrderByCollectedAtDesc(): List<JobListing>
     fun existsBySourceNameAndSourceId(sourceName: String, sourceId: String): Boolean
     fun deleteBySourceName(sourceName: String)
 
-    // Vector similarity search (pgvector cosine distance)
+    // Vector similarity search (pgvector cosine distance) — excludes expired listings
     @Query(
         value = """
             SELECT * FROM job_listings
             WHERE embedding IS NOT NULL
+              AND (deadline IS NULL OR deadline >= CURRENT_DATE)
             ORDER BY embedding <=> CAST(:queryVector AS vector)
             LIMIT :lim
         """,
@@ -26,11 +28,12 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
         @Param("lim") limit: Int,
     ): List<JobListing>
 
-    // Full-text keyword search (tsvector)
+    // Full-text keyword search (tsvector) — excludes expired listings
     @Query(
         value = """
             SELECT * FROM job_listings
             WHERE search_vector @@ to_tsquery('simple', :query)
+              AND (deadline IS NULL OR deadline >= CURRENT_DATE)
             ORDER BY ts_rank(search_vector, to_tsquery('simple', :query)) DESC
             LIMIT :lim
         """,
@@ -41,11 +44,12 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
         @Param("lim") limit: Int,
     ): List<JobListing>
 
-    // Trigram fallback for substring matching
+    // Trigram fallback — excludes expired listings
     @Query(
         value = """
             SELECT * FROM job_listings
-            WHERE title ILIKE :pattern OR description ILIKE :pattern
+            WHERE (title ILIKE :pattern OR description ILIKE :pattern)
+              AND (deadline IS NULL OR deadline >= CURRENT_DATE)
             LIMIT :lim
         """,
         nativeQuery = true,
@@ -91,4 +95,24 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
         @Param("embeddedAt") embeddedAt: java.time.LocalDateTime,
         @Param("embeddingModel") embeddingModel: String,
     )
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE job_listings SET deadline = :deadline
+            WHERE source_name = :sourceName AND source_id IN :sourceIds
+        """,
+        nativeQuery = true,
+    )
+    fun refreshDeadlines(
+        @Param("sourceName") sourceName: String,
+        @Param("sourceIds") sourceIds: List<String>,
+        @Param("deadline") deadline: LocalDate,
+    )
+
+    @Modifying
+    @Query("DELETE FROM JobListing j WHERE j.deadline < :cutoff")
+    fun deleteExpired(@Param("cutoff") cutoff: LocalDate): Int
+
+    fun countByDeadlineBefore(deadline: LocalDate): Long
 }
