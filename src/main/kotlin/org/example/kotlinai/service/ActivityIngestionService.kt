@@ -22,6 +22,7 @@ class ActivityIngestionService(
     private val ingestionRunRepository: IngestionRunRepository,
     private val embeddingService: EmbeddingService,
     private val activityListingSaver: ActivityListingSaver,
+    private val embeddingUpdater: EmbeddingUpdater,
 ) {
     private val log = LoggerFactory.getLogger(ActivityIngestionService::class.java)
     private val activitySourceNames by lazy { clients.map { it.sourceName() }.toSet() }
@@ -55,7 +56,13 @@ class ActivityIngestionService(
         var failedCount = 0
 
         val chunks = unembedded.chunked(10)
-        chunks.forEachIndexed { index, batch ->
+        var connectionFailed = false
+        for ((index, batch) in chunks.withIndex()) {
+            if (connectionFailed) {
+                failedCount += batch.size
+                continue
+            }
+
             val texts = batch.map { buildEmbeddingText(it) }
             var success = false
             var retries = 0
@@ -65,7 +72,7 @@ class ActivityIngestionService(
                 try {
                     val embeddings = embeddingService.embedTexts(texts)
                     batch.zip(embeddings).forEach { (listing, embedding) ->
-                        activityListingRepository.updateEmbedding(
+                        embeddingUpdater.updateActivityEmbedding(
                             id = listing.id,
                             embedding = embedding.toVectorString(),
                             embeddedAt = LocalDateTime.now(),
@@ -77,6 +84,12 @@ class ActivityIngestionService(
                     success = true
                 } catch (e: Exception) {
                     retries++
+                    if (isConnectionFailure(e)) {
+                        log.error("[Activity Backfill] DB 커넥션 실패 감지, 나머지 배치 건너뜀")
+                        failedCount += batch.size
+                        connectionFailed = true
+                        break
+                    }
                     if (retries > maxRetries) {
                         log.warn("[Activity Backfill] 배치 {}/{} 최종 실패 ({}회 재시도): {}", index + 1, chunks.size, maxRetries, e.message)
                         failedCount += batch.size
@@ -88,7 +101,7 @@ class ActivityIngestionService(
                 }
             }
 
-            if (index < chunks.size - 1) {
+            if (!connectionFailed && index < chunks.size - 1) {
                 Thread.sleep(1000)
             }
         }
@@ -190,12 +203,12 @@ class ActivityIngestionService(
             return
         }
 
-        embeddable.chunked(10).forEach { batch ->
+        for (batch in embeddable.chunked(10)) {
             val texts = batch.map { buildEmbeddingText(it) }
             try {
                 val embeddings = embeddingService.embedTexts(texts)
                 batch.zip(embeddings).forEach { (listing, embedding) ->
-                    activityListingRepository.updateEmbedding(
+                    embeddingUpdater.updateActivityEmbedding(
                         id = listing.id,
                         embedding = embedding.toVectorString(),
                         embeddedAt = LocalDateTime.now(),
@@ -204,8 +217,26 @@ class ActivityIngestionService(
                 }
             } catch (e: Exception) {
                 log.warn("[Activity] 임베딩 생성 실패 ({}건), 나중에 backfill 가능: {}", batch.size, e.message)
+                if (isConnectionFailure(e)) {
+                    log.error("[Activity] DB 커넥션 실패 감지, 나머지 배치 건너뜀 (backfill로 복구 가능)")
+                    break
+                }
             }
         }
+    }
+
+    private fun isConnectionFailure(e: Exception): Boolean {
+        var cause: Throwable? = e
+        while (cause != null) {
+            val msg = cause.message?.lowercase() ?: ""
+            if (msg.contains("connection is closed") || msg.contains("connection reset") ||
+                cause is java.net.SocketException
+            ) {
+                return true
+            }
+            cause = cause.cause
+        }
+        return false
     }
 
     private fun buildEmbeddingText(listing: ActivityListing): String =

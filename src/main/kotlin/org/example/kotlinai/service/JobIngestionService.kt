@@ -22,6 +22,7 @@ class JobIngestionService(
     private val ingestionRunRepository: IngestionRunRepository,
     private val embeddingService: EmbeddingService,
     private val jobListingSaver: JobListingSaver,
+    private val embeddingUpdater: EmbeddingUpdater,
 ) {
     private val log = LoggerFactory.getLogger(JobIngestionService::class.java)
 
@@ -54,7 +55,13 @@ class JobIngestionService(
         var failedCount = 0
 
         val chunks = unembedded.chunked(10)
-        chunks.forEachIndexed { index, batch ->
+        var connectionFailed = false
+        for ((index, batch) in chunks.withIndex()) {
+            if (connectionFailed) {
+                failedCount += batch.size
+                continue
+            }
+
             val texts = batch.map { buildEmbeddingText(it) }
             var success = false
             var retries = 0
@@ -64,7 +71,7 @@ class JobIngestionService(
                 try {
                     val embeddings = embeddingService.embedTexts(texts)
                     batch.zip(embeddings).forEach { (listing, embedding) ->
-                        jobListingRepository.updateEmbedding(
+                        embeddingUpdater.updateJobEmbedding(
                             id = listing.id,
                             embedding = embedding.toVectorString(),
                             embeddedAt = LocalDateTime.now(),
@@ -76,6 +83,12 @@ class JobIngestionService(
                     success = true
                 } catch (e: Exception) {
                     retries++
+                    if (isConnectionFailure(e)) {
+                        log.error("[Backfill] DB 커넥션 실패 감지, 나머지 배치 건너뜀")
+                        failedCount += batch.size
+                        connectionFailed = true
+                        break
+                    }
                     if (retries > maxRetries) {
                         log.warn("[Backfill] 배치 {}/{} 최종 실패 ({}회 재시도): {}", index + 1, chunks.size, maxRetries, e.message)
                         failedCount += batch.size
@@ -87,8 +100,7 @@ class JobIngestionService(
                 }
             }
 
-            // Rate limit: Gemini 유료 티어 — 배치 간 1초 딜레이
-            if (index < chunks.size - 1) {
+            if (!connectionFailed && index < chunks.size - 1) {
                 Thread.sleep(1000)
             }
         }
@@ -186,19 +198,18 @@ class JobIngestionService(
     private fun embedNewListings(listings: List<JobListing>) {
         if (listings.isEmpty()) return
 
-        // Filter out listings with empty text content
         val embeddable = listings.filter { buildEmbeddingText(it).isNotBlank() }
         if (embeddable.isEmpty()) {
             log.warn("임베딩할 텍스트가 있는 공고가 없습니다 ({}건 스킵)", listings.size)
             return
         }
 
-        embeddable.chunked(10).forEach { batch ->
+        for (batch in embeddable.chunked(10)) {
             val texts = batch.map { buildEmbeddingText(it) }
             try {
                 val embeddings = embeddingService.embedTexts(texts)
                 batch.zip(embeddings).forEach { (listing, embedding) ->
-                    jobListingRepository.updateEmbedding(
+                    embeddingUpdater.updateJobEmbedding(
                         id = listing.id,
                         embedding = embedding.toVectorString(),
                         embeddedAt = LocalDateTime.now(),
@@ -207,8 +218,26 @@ class JobIngestionService(
                 }
             } catch (e: Exception) {
                 log.warn("임베딩 생성 실패 ({}건), 나중에 backfill 가능: {}", batch.size, e.message)
+                if (isConnectionFailure(e)) {
+                    log.error("DB 커넥션 실패 감지, 나머지 배치 건너뜀 (backfill로 복구 가능)")
+                    break
+                }
             }
         }
+    }
+
+    private fun isConnectionFailure(e: Exception): Boolean {
+        var cause: Throwable? = e
+        while (cause != null) {
+            val msg = cause.message?.lowercase() ?: ""
+            if (msg.contains("connection is closed") || msg.contains("connection reset") ||
+                cause is java.net.SocketException
+            ) {
+                return true
+            }
+            cause = cause.cause
+        }
+        return false
     }
 
     private fun buildEmbeddingText(listing: JobListing): String =
