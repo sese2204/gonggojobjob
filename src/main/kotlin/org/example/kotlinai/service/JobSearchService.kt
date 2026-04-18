@@ -27,6 +27,7 @@ class JobSearchService(
     private val ragProperties: RagProperties,
     private val userRepository: UserRepository,
     private val searchHistoryRepository: SearchHistoryRepository,
+    private val searchCacheService: SearchCacheService,
 ) {
     private val log = LoggerFactory.getLogger(JobSearchService::class.java)
 
@@ -40,11 +41,18 @@ class JobSearchService(
         }
 
         val userId = currentUserId()
+        val cacheKey = searchCacheService.buildKey(userId, "job", request.tags, request.query)
+        val cached = searchCacheService.get<JobSearchResponse>(cacheKey)
+        if (cached != null) {
+            log.info("[Search] 캐시 히트 — tags={}, query='{}'", request.tags, request.query)
+            return cached
+        }
+
         if (userId != null) {
             val todayCount = searchHistoryRepository.countByUserIdAndSearchedAtAfter(
                 userId, LocalDate.now().atStartOfDay()
             )
-            if (todayCount >= 5) {
+            if (todayCount >= DAILY_SEARCH_LIMIT) {
                 throw DailySearchLimitExceededException()
             }
         }
@@ -52,8 +60,6 @@ class JobSearchService(
         log.info("[Search] 요청 - tags={}, query='{}'", request.tags, request.query)
 
         val totalCount = jobListingRepository.count().toInt()
-        log.info("[Search] DB 전체 공고 수: {}", totalCount)
-
         val today = LocalDate.now()
 
         val listings = hybridSearchService.search(request.tags, request.query, ragProperties.topN)
@@ -63,18 +69,15 @@ class JobSearchService(
             log.warn("[Search] 하이브리드 검색 결과 0건 → 빈 응답 반환")
             val response = JobSearchResponse(jobs = emptyList(), totalCount = totalCount, newTodayCount = 0)
             saveSearchHistory(request, emptyList(), emptyMap(), userId)
+            searchCacheService.put(cacheKey, response)
             return response
         }
 
         val newTodayCount = listings.count { it.collectedAt.toLocalDate() == today }
 
         val summaries = listings.map { it.toAiSummary() }
-        log.info("[Search] AI 매칭 요청 - {}건 공고", summaries.size)
-
         val aiResultMap = try {
-            val aiResults = geminiService.matchJobs(request.tags, request.query, summaries)
-            log.info("[Search] AI 매칭 응답 - {}건 결과", aiResults.size)
-            aiResults.associateBy { it.id }
+            geminiService.matchJobs(request.tags, request.query, summaries).associateBy { it.id }
         } catch (e: Exception) {
             log.warn("[Search] AI 매칭 실패, 점수 없이 반환: {}", e.message)
             emptyMap()
@@ -91,7 +94,13 @@ class JobSearchService(
 
         saveSearchHistory(request, listings, aiResultMap, userId)
 
-        return JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
+        val response = JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
+        searchCacheService.put(cacheKey, response)
+        return response
+    }
+
+    companion object {
+        private const val DAILY_SEARCH_LIMIT = 15
     }
 
     private fun currentUserId(): Long? {

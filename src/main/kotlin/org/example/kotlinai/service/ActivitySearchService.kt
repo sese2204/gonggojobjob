@@ -27,6 +27,7 @@ class ActivitySearchService(
     private val ragProperties: RagProperties,
     private val userRepository: UserRepository,
     private val activitySearchHistoryRepository: ActivitySearchHistoryRepository,
+    private val searchCacheService: SearchCacheService,
 ) {
     private val log = LoggerFactory.getLogger(ActivitySearchService::class.java)
 
@@ -40,11 +41,18 @@ class ActivitySearchService(
         }
 
         val userId = currentUserId()
+        val cacheKey = searchCacheService.buildKey(userId, "activity", request.tags, request.query)
+        val cached = searchCacheService.get<ActivitySearchResponse>(cacheKey)
+        if (cached != null) {
+            log.info("[ActivitySearch] 캐시 히트 — tags={}, query='{}'", request.tags, request.query)
+            return cached
+        }
+
         if (userId != null) {
             val todayCount = activitySearchHistoryRepository.countByUserIdAndSearchedAtAfter(
                 userId, LocalDate.now().atStartOfDay(),
             )
-            if (todayCount >= 5) {
+            if (todayCount >= DAILY_SEARCH_LIMIT) {
                 throw DailySearchLimitExceededException()
             }
         }
@@ -59,7 +67,9 @@ class ActivitySearchService(
 
         if (listings.isEmpty()) {
             saveSearchHistory(request, emptyList(), emptyMap(), userId)
-            return ActivitySearchResponse(activities = emptyList(), totalCount = totalCount, newTodayCount = 0)
+            val response = ActivitySearchResponse(activities = emptyList(), totalCount = totalCount, newTodayCount = 0)
+            searchCacheService.put(cacheKey, response)
+            return response
         }
 
         val newTodayCount = listings.count { it.collectedAt.toLocalDate() == today }
@@ -81,7 +91,13 @@ class ActivitySearchService(
 
         saveSearchHistory(request, listings, aiResultMap, userId)
 
-        return ActivitySearchResponse(activities = activities, totalCount = totalCount, newTodayCount = newTodayCount)
+        val response = ActivitySearchResponse(activities = activities, totalCount = totalCount, newTodayCount = newTodayCount)
+        searchCacheService.put(cacheKey, response)
+        return response
+    }
+
+    companion object {
+        private const val DAILY_SEARCH_LIMIT = 15
     }
 
     private fun currentUserId(): Long? {
