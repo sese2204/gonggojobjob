@@ -2,6 +2,7 @@ package org.example.kotlinai.entity
 
 import jakarta.persistence.*
 import jakarta.persistence.UniqueConstraint
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
@@ -38,6 +39,8 @@ class JobListing(
     var embeddedAt: LocalDateTime? = null,
 
     var embeddingModel: String? = null,
+
+    val deadline: LocalDate? = null,
 
     @Column(insertable = false, updatable = false, columnDefinition = "tsvector")
     val searchVector: String? = null,

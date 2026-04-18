@@ -12,7 +12,9 @@ import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Service
 @Transactional(readOnly = true)
@@ -166,6 +168,7 @@ class ActivityIngestionService(
                             description = dto.description?.let { stripHtml(it) },
                             sourceName = client.sourceName(),
                             sourceId = dto.sourceId,
+                            deadline = parseDeadline(dto.endDate),
                         ),
                     )
                     newListings.add(listing)
@@ -243,6 +246,20 @@ class ActivityIngestionService(
         listOfNotNull(listing.title, listing.organizer, listing.category, listing.description)
             .filter { it.isNotBlank() }
             .joinToString(" ")
+
+    private fun parseDeadline(endDate: String?): LocalDate {
+        if (endDate.isNullOrBlank()) return LocalDate.now().plusDays(DEFAULT_DEADLINE_DAYS)
+        return try {
+            val normalized = endDate.replace(".", "-").replace("/", "-").trim()
+            LocalDate.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (e: Exception) {
+            LocalDate.now().plusDays(DEFAULT_DEADLINE_DAYS)
+        }
+    }
+
+    companion object {
+        private const val DEFAULT_DEADLINE_DAYS = 30L
+    }
 }
 
 private fun stripHtml(text: String): String =

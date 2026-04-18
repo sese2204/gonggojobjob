@@ -12,7 +12,9 @@ import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Service
 @Transactional(readOnly = true)
@@ -126,12 +128,10 @@ class JobIngestionService(
             var duplicateCount = 0
             var failedCount = 0
 
-            // Upsert: get existing sourceIds
             val existingSourceIds = jobListingRepository
                 .findSourceIdsBySourceName(client.sourceName())
                 .toSet()
 
-            // Deduplicate within incoming batch (API can return same sourceId across pages)
             val deduplicatedJobs = jobs.distinctBy { it.sourceId }
             val batchDuplicateCount = jobs.size - deduplicatedJobs.size
             if (batchDuplicateCount > 0) {
@@ -140,15 +140,24 @@ class JobIngestionService(
 
             val incomingSourceIds = deduplicatedJobs.mapNotNull { it.sourceId }.toSet()
 
-            // Delete obsolete listings (present in DB but absent from source)
-            if (incomingSourceIds.isNotEmpty()) {
-                jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
-                    client.sourceName(),
-                    incomingSourceIds.toList(),
-                )
+            if (client.supportsFullSync()) {
+                if (incomingSourceIds.isNotEmpty()) {
+                    jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
+                        client.sourceName(),
+                        incomingSourceIds.toList(),
+                    )
+                }
+            } else {
+                val reseenIds = incomingSourceIds.filter { it in existingSourceIds }
+                if (reseenIds.isNotEmpty()) {
+                    val refreshedDeadline = LocalDate.now().plusDays(DEFAULT_DEADLINE_DAYS)
+                    reseenIds.chunked(500).forEach { chunk ->
+                        jobListingRepository.refreshDeadlines(client.sourceName(), chunk, refreshedDeadline)
+                    }
+                    log.info("[{}] 기존 공고 {}건 deadline 갱신 → {}", client.sourceName(), reseenIds.size, refreshedDeadline)
+                }
             }
 
-            // Insert new, skip existing
             val newListings = mutableListOf<JobListing>()
             duplicateCount += batchDuplicateCount
             for (dto in deduplicatedJobs) {
@@ -166,6 +175,7 @@ class JobIngestionService(
                             description = dto.description?.let { stripHtml(it) },
                             sourceName = client.sourceName(),
                             sourceId = dto.sourceId,
+                            deadline = parseDeadline(dto.deadline),
                         ),
                     )
                     newListings.add(listing)
@@ -176,7 +186,6 @@ class JobIngestionService(
                 }
             }
 
-            // Auto-embed new listings
             embedNewListings(newListings)
 
             run.newCount = newCount
@@ -193,6 +202,20 @@ class JobIngestionService(
             ingestionRunRepository.save(run)
             throw e
         }
+    }
+
+    private fun parseDeadline(raw: String?): LocalDate {
+        if (raw.isNullOrBlank()) return LocalDate.now().plusDays(DEFAULT_DEADLINE_DAYS)
+        return try {
+            val normalized = raw.replace(".", "-").replace("/", "-").trim()
+            LocalDate.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (e: Exception) {
+            LocalDate.now().plusDays(DEFAULT_DEADLINE_DAYS)
+        }
+    }
+
+    companion object {
+        private const val DEFAULT_DEADLINE_DAYS = 30L
     }
 
     private fun embedNewListings(listings: List<JobListing>) {
