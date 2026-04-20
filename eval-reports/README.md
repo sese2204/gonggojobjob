@@ -115,6 +115,8 @@ By category (Recall@10):
 | `phase1-2` | 2026-04-20 | 75eb6a7 | 2026-04-20 | Phase 1 code re-measured with v2 labels. Fair comparison vs `baseline-2`. |
 | `tune-kw60` | 2026-04-20 | 75eb6a7 | 2026-04-20 | Phase 1 + RRF weights (kw=0.6, vec=0.4). Keyword-heavy. |
 | `tune-kw40` | 2026-04-20 | 75eb6a7 | 2026-04-20 | Phase 1 + RRF weights (kw=0.4, vec=0.6). Vector-heavy. |
+| `phase2-hyde` | 2026-04-21 | 6e90632 | 2026-04-20 | Pure HyDE: vector search uses pseudo-posting embedding only, original query embedding dropped. **Failed** — see changelog. |
+| `phase2-hyde-ens` | 2026-04-21 | 6e90632 | 2026-04-20 | HyDE ensemble: average(embed(query, RETRIEVAL_QUERY), embed(pseudo, RETRIEVAL_DOCUMENT)). Strict improvement over `phase2-hyde` but still regresses vs `phase1-2`. **Rejected** — see changelog. |
 
 ## Current scoreboard
 
@@ -138,6 +140,109 @@ By category (Recall@10, phase1-2 vs baseline-2):
 | adversarial (n=4) | 1.000 | 1.000 | 0 |
 
 ## Changelog
+
+### 2026-04-21 — Phase 2b: HyDE ensemble → rejected, HyDE abandoned
+
+**Change**: instead of replacing the query embedding, *average* it with the
+pseudo-posting embedding. Uses correct asymmetric taskTypes:
+`embed(query, RETRIEVAL_QUERY)` + `embed(pseudo, RETRIEVAL_DOCUMENT)`, then
+element-wise mean → L2-renormalize.
+
+**Result**: strict improvement over pure HyDE, but still net regression vs
+`phase1-2`.
+
+| Metric | phase1-2 | phase2-hyde | phase2-hyde-ens | Δ vs phase1-2 |
+|---|---|---|---|---|
+| Recall@10 | 0.826 | 0.497 | 0.744 | **-10%** |
+| nDCG@10 | 0.926 | 0.626 | 0.839 | -9% |
+| P@5 | 0.738 | 0.492 | 0.662 | -10% |
+| MRR | 0.940 | 0.788 | 0.917 | -2% |
+| ZeroRate | 0.000 | 0.100 | 0.000 | flat |
+| p50 latency | 18.0s | 22.4s | 23.8s | +32% |
+
+By category (Recall@10):
+
+| Category | phase1-2 | phase2-hyde-ens | Δ |
+|---|---|---|---|
+| head (n=6) | 0.694 | 0.592 | **-15%** |
+| short_korean (n=10) | 0.880 | 0.771 | **-12%** |
+| **long_natural (n=6)** | 0.718 | **0.768** | **+7%** |
+| synonym (n=4) | 0.939 | 0.677 | **-28%** |
+| adversarial (n=4) | 1.000 | 1.000 | 0 |
+
+**Interpretation**:
+- Ensemble fixes the "query semantics dropped" problem from pure HyDE — `long_natural`
+  actually gains +7% because rich natural queries benefit from the extra doc-side context.
+- Every other category regresses. The pseudo-doc still drags the embedding
+  toward a hallucinated niche for short/ambiguous queries ("인턴", "ML"), which
+  is where `head` and `synonym` lose badly.
+- Latency gets worse, not better: ensemble requires *two* embedding calls
+  (query + pseudo) plus the LLM pseudo-posting generation.
+
+**Decision**: HyDE rejected for this corpus + embedding model combo. The net
+Recall loss isn't worth the single `long_natural` win — and `long_natural` was
+already Phase 1's smallest win category, so the trade compounds badly.
+
+**HyDE code reverted** from `ActivityHybridSearchService`, `RagProperties`, and
+`GeminiService`; `HydeService.kt` deleted. Phase 1 (`phase1-2`) is the shipping
+state.
+
+**What would make HyDE viable here** (not pursuing now):
+- A symmetric embedding model (single head) so ensemble math is less lossy.
+- A prompt that generates *template-shaped* pseudo-postings (모집대상 / 활동내용 / ...)
+  to match corpus style — but that reintroduces brittleness and cost.
+- Query-classification gate: only apply HyDE for `long_natural`. Adds complexity
+  for a +7% win on 20% of queries. Not worth it vs. pursuing a different lever.
+
+### 2026-04-21 — Phase 2a: pure HyDE → rejected
+
+**Change**: `fetchVectorResults` replaces the query embedding with an embedding
+of a Gemini-generated pseudo-posting (`HydeService.generatePseudoPosting`).
+Flag `rag.search.hydeEnabled` (default `false`); eval run with flag on.
+
+**Result**: regression everywhere.
+
+| Metric | phase1-2 | phase2-hyde | Δ |
+|---|---|---|---|
+| Recall@10 | 0.826 | 0.497 | -40% |
+| nDCG@10 | 0.926 | 0.626 | -32% |
+| P@5 | 0.738 | 0.492 | -33% |
+| MRR | 0.940 | 0.788 | -16% |
+| ZeroRate | 0.000 | 0.100 | +10pp |
+| p50 latency | 18.0s | 22.4s | +24% |
+
+By category — the three clean categories (no 429 rate-limit hits) all regressed:
+
+| Category | ZeroRate | phase1-2 | phase2-hyde | Δ |
+|---|---|---|---|---|
+| head (n=6) | 0.000 | 0.694 | 0.521 | **-25%** |
+| short_korean (n=10) | 0.000 | 0.880 | 0.666 | **-24%** |
+| long_natural (n=6) | 0.000 | 0.718 | 0.256 | **-64%** |
+| synonym (n=4) | 0.250 | 0.939 | 0.556 | contaminated by 429 |
+| adversarial (n=4) | 0.500 | 1.000 | 0.286 | contaminated by 429 |
+
+**Root cause — corpus/model fit, not API failure**:
+1. **Style mismatch**: Korean student activity postings follow a rigid template
+   (모집대상 / 활동내용 / 주관 / 혜택). Gemini generates narrative, generic prose.
+   Embedding-space distance to real postings increases.
+2. **Hallucination drift on short queries**: for "인턴" the LLM invents a
+   specific company / domain. The pseudo-doc embedding narrows onto that
+   niche and misses broad matches.
+3. **Query semantics dropped**: pure-HyDE discards the `RETRIEVAL_QUERY`
+   embedding of the user's original text. For `long_natural` (already rich
+   natural queries) this removes the strongest signal — hence the -64% drop.
+4. **Asymmetric embedding heads**: `gemini-embedding-001` has separate
+   `RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT` heads. The original HyDE paper
+   assumes a symmetric encoder; this model doesn't behave that way.
+
+The 429 rate-limit errors only hit `synonym` and `adversarial` (3 queries
+total). The 25–64% drops in the clean head/short/long categories are the
+actual signal.
+
+**Next attempt — Phase 2b (ensemble)**: keep the query embedding as the
+primary signal, average it with the HyDE pseudo-posting embedding. Addresses
+root cause #3 directly and is what the original HyDE paper does when
+combined with an asymmetric retriever.
 
 ### 2026-04-20 — RRF weight grid (kw=0.4/0.5/0.6) → keep default 0.5/0.5
 
