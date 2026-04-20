@@ -35,13 +35,15 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
         @Param("lim") limit: Int,
     ): List<ActivityListing>
 
-    // Full-text keyword search — excludes expired listings
+    // Full-text keyword search — excludes expired listings.
+    // ts_rank_cd (cover density): rewards matches that are contiguous / near each other,
+    // 분산된 토큰보다 조밀하게 맞는 문서를 상단으로 올린다.
     @Query(
         value = """
             SELECT * FROM activity_listings
             WHERE search_vector @@ to_tsquery('simple', :query)
               AND (deadline IS NULL OR deadline >= CURRENT_DATE)
-            ORDER BY ts_rank(search_vector, to_tsquery('simple', :query)) DESC
+            ORDER BY ts_rank_cd(search_vector, to_tsquery('simple', :query)) DESC
             LIMIT :lim
         """,
         nativeQuery = true,
