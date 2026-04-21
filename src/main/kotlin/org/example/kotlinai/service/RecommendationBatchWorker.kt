@@ -37,7 +37,7 @@ class RecommendationBatchWorker(
         val summaries = listings.map { it.toAiJobSummary() }
         val aiResultMap = try {
             geminiService.matchJobs(category.searchTags, category.displayName, summaries)
-                .associateBy { it.id }
+                .results.associateBy { it.id }
         } catch (e: Exception) {
             log.warn("[Recommendation] {} AI 매칭 실패: {}", category.name, e.message)
             emptyMap()
@@ -66,7 +66,7 @@ class RecommendationBatchWorker(
         val summaries = listings.map { it.toAiActivitySummary() }
         val aiResultMap = try {
             geminiService.matchActivities(category.searchTags, category.displayName, summaries)
-                .associateBy { it.id }
+                .results.associateBy { it.id }
         } catch (e: Exception) {
             log.warn("[Recommendation] {} AI 매칭 실패: {}", category.name, e.message)
             emptyMap()

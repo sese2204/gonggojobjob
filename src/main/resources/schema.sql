@@ -146,6 +146,14 @@ CREATE TABLE IF NOT EXISTS activity_search_histories (
 CREATE INDEX IF NOT EXISTS idx_activity_search_history_user_id
     ON activity_search_histories (user_id);;
 
+ALTER TABLE activity_search_histories ADD COLUMN IF NOT EXISTS hybrid_result_count INT;;
+ALTER TABLE activity_search_histories ADD COLUMN IF NOT EXISTS gemini_input_chars INT;;
+ALTER TABLE activity_search_histories ADD COLUMN IF NOT EXISTS latency_ms BIGINT;;
+
+ALTER TABLE search_histories ADD COLUMN IF NOT EXISTS hybrid_result_count INT;;
+ALTER TABLE search_histories ADD COLUMN IF NOT EXISTS gemini_input_chars INT;;
+ALTER TABLE search_histories ADD COLUMN IF NOT EXISTS latency_ms BIGINT;;
+
 -- ===== recommended_activities table =====
 
 CREATE TABLE IF NOT EXISTS recommended_activities (

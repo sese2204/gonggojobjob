@@ -27,6 +27,11 @@ data class AiActivitySummary(
     val description: String?,
 )
 
+data class AiMatchResponse(
+    val results: List<AiMatchResult>,
+    val inputChars: Int,
+)
+
 @Service
 class GeminiService(
     private val objectMapper: ObjectMapper,
@@ -56,15 +61,15 @@ class GeminiService(
         tags: List<String>,
         query: String,
         listings: List<AiJobSummary>,
-    ): List<AiMatchResult> = callGeminiApi(buildPrompt(tags, query, listings))
+    ): AiMatchResponse = callGeminiApi(buildPrompt(tags, query, listings))
 
     fun matchActivities(
         tags: List<String>,
         query: String,
         listings: List<AiActivitySummary>,
-    ): List<AiMatchResult> = callGeminiApi(buildActivityPrompt(tags, query, listings))
+    ): AiMatchResponse = callGeminiApi(buildActivityPrompt(tags, query, listings))
 
-    private fun callGeminiApi(prompt: String): List<AiMatchResult> {
+    private fun callGeminiApi(prompt: String): AiMatchResponse {
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf("parts" to listOf(mapOf("text" to prompt)))
@@ -93,11 +98,12 @@ class GeminiService(
         val jsonText = extractJsonText(rawResponse)
             ?: throw AiServiceException("AI 응답에서 JSON을 추출할 수 없습니다.")
 
-        return try {
+        val results = try {
             objectMapper.readValue<List<AiMatchResult>>(jsonText)
         } catch (e: Exception) {
             throw AiServiceException("AI 응답 JSON 파싱 실패: ${e.message}", e)
         }
+        return AiMatchResponse(results = results, inputChars = requestJson.length)
     }
 
     @Suppress("UNCHECKED_CAST")

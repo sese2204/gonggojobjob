@@ -2,6 +2,7 @@ package org.example.kotlinai.controller
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.example.kotlinai.dto.response.AiMatchResult
+import org.example.kotlinai.service.AiMatchResponse
 import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.global.exception.AiServiceException
 import org.example.kotlinai.repository.JobListingRepository
@@ -63,10 +64,10 @@ class JobSearchControllerTest {
     @Test
     fun `POST search returns 200 with AI-scored jobs`() {
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
-            listOf(
+            AiMatchResponse(listOf(
                 AiMatchResult("0", 90, "React 기술이 일치합니다."),
                 AiMatchResult("1", 40, "기술 스택이 다소 다릅니다."),
-            )
+            ), 1000)
         )
 
         mockMvc.post("/api/jobs/search") {

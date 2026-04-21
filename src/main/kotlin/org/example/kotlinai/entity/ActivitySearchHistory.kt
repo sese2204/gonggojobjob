@@ -22,6 +22,12 @@ class ActivitySearchHistory(
     @Column(nullable = false)
     val resultCount: Int,
 
+    val hybridResultCount: Int? = null,
+
+    val geminiInputChars: Int? = null,
+
+    val latencyMs: Long? = null,
+
     @Column(nullable = false, updatable = false)
     val searchedAt: LocalDateTime = LocalDateTime.now(),
 

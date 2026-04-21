@@ -59,6 +59,7 @@ class ActivitySearchService(
 
         log.info("[ActivitySearch] tags={}, query='{}'", request.tags, request.query)
 
+        val startMs = System.currentTimeMillis()
         val totalCount = activityListingRepository.count().toInt()
         val today = LocalDate.now()
 
@@ -66,7 +67,8 @@ class ActivitySearchService(
         log.info("[ActivitySearch] hybrid search results: {}", listings.size)
 
         if (listings.isEmpty()) {
-            saveSearchHistory(request, emptyList(), emptyMap(), userId)
+            val latencyMs = System.currentTimeMillis() - startMs
+            saveSearchHistory(request, emptyList(), emptyMap(), userId, listings.size, null, latencyMs)
             val response = ActivitySearchResponse(activities = emptyList(), totalCount = totalCount, newTodayCount = 0)
             searchCacheService.put(cacheKey, response)
             return response
@@ -75,12 +77,16 @@ class ActivitySearchService(
         val newTodayCount = listings.count { it.collectedAt.toLocalDate() == today }
 
         val summaries = listings.map { it.toAiSummary() }
-        val aiResultMap = try {
-            geminiService.matchActivities(request.tags, request.query, summaries).associateBy { it.id }
+        val (aiResultMap, geminiInputChars) = try {
+            val response = geminiService.matchActivities(request.tags, request.query, summaries)
+            response.results.associateBy { it.id } to response.inputChars
         } catch (e: Exception) {
             log.warn("[ActivitySearch] AI matching failed: {}", e.message)
-            emptyMap()
+            emptyMap<String, AiMatchResult>() to null
         }
+
+        val latencyMs = System.currentTimeMillis() - startMs
+        log.info("[ActivitySearch] latency={}ms geminiInputChars={}", latencyMs, geminiInputChars)
 
         val activities = listings
             .map { listing ->
@@ -89,7 +95,7 @@ class ActivitySearchService(
             }
             .sortedByDescending { it.match }
 
-        saveSearchHistory(request, listings, aiResultMap, userId)
+        saveSearchHistory(request, listings, aiResultMap, userId, listings.size, geminiInputChars, latencyMs)
 
         val response = ActivitySearchResponse(activities = activities, totalCount = totalCount, newTodayCount = newTodayCount)
         searchCacheService.put(cacheKey, response)
@@ -110,6 +116,9 @@ class ActivitySearchService(
         listings: List<ActivityListing>,
         aiResultMap: Map<String, AiMatchResult>,
         userId: Long?,
+        hybridResultCount: Int,
+        geminiInputChars: Int?,
+        latencyMs: Long,
     ) {
         if (userId == null) {
             log.warn("[ActivitySearch] no authenticated user — skipping history save")
@@ -127,6 +136,9 @@ class ActivitySearchService(
             tagsString = request.tags.takeIf { it.isNotEmpty() }?.joinToString(","),
             query = request.query.takeIf { it.isNotBlank() },
             resultCount = listings.size,
+            hybridResultCount = hybridResultCount,
+            geminiInputChars = geminiInputChars,
+            latencyMs = latencyMs,
         )
 
         listings.forEach { listing ->
