@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.global.exception.AiServiceException
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -30,6 +31,7 @@ data class AiActivitySummary(
 class GeminiService(
     private val objectMapper: ObjectMapper,
 ) {
+    private val log = LoggerFactory.getLogger(GeminiService::class.java)
     @Value("\${gemini.api.key}")
     private lateinit var apiKey: String
 
@@ -72,11 +74,14 @@ class GeminiService(
             ),
         )
 
+        val requestJson = objectMapper.writeValueAsString(requestBody)
+        log.info("[Gemini] request chars={} est_tokens={}", requestJson.length, requestJson.length / 3)
+
         val rawResponse = try {
             restClient.post()
                 .uri(URI.create("$apiUrl?key=$apiKey"))
                 .header("Content-Type", "application/json")
-                .body(objectMapper.writeValueAsString(requestBody))
+                .body(requestJson)
                 .retrieve()
                 .body(Map::class.java)
         } catch (e: RestClientException) {
