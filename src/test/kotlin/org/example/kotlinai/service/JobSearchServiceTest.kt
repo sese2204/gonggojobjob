@@ -3,6 +3,7 @@ package org.example.kotlinai.service
 import org.example.kotlinai.config.RagProperties
 import org.example.kotlinai.dto.request.JobSearchRequest
 import org.example.kotlinai.dto.response.AiMatchResult
+import org.example.kotlinai.service.AiMatchResponse
 import org.example.kotlinai.entity.JobListing
 import org.example.kotlinai.repository.JobListingRepository
 import org.example.kotlinai.repository.SearchHistoryRepository
@@ -33,6 +34,7 @@ class JobSearchServiceTest {
     private lateinit var hybridSearchService: HybridSearchService
     private lateinit var userRepository: UserRepository
     private lateinit var searchHistoryRepository: SearchHistoryRepository
+    private lateinit var searchCacheService: SearchCacheService
     private lateinit var jobSearchService: JobSearchService
     private val ragProperties = RagProperties()
 
@@ -49,7 +51,8 @@ class JobSearchServiceTest {
         hybridSearchService = mock()
         userRepository = mock()
         searchHistoryRepository = mock()
-        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository)
+        searchCacheService = SearchCacheService()
+        jobSearchService = JobSearchService(jobListingRepository, geminiService, hybridSearchService, ragProperties, userRepository, searchHistoryRepository, searchCacheService)
         SecurityContextHolder.clearContext()
     }
 
@@ -83,11 +86,11 @@ class JobSearchServiceTest {
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
-            listOf(
+            AiMatchResponse(listOf(
                 AiMatchResult("0", 50, "부분 일치"),
                 AiMatchResult("0", 90, "높은 일치"),
                 AiMatchResult("0", 30, "낮은 일치"),
-            )
+            ), 1000)
         )
 
         val result = jobSearchService.search(JobSearchRequest(tags = listOf("React")))
@@ -103,7 +106,7 @@ class JobSearchServiceTest {
         )
         whenever(jobListingRepository.count()).thenReturn(1L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 150, "점수 초과"))
+            AiMatchResponse(listOf(AiMatchResult("0", 150, "점수 초과")), 500)
         )
 
         val result = jobSearchService.search(JobSearchRequest(tags = listOf("React")))
@@ -118,7 +121,7 @@ class JobSearchServiceTest {
         )
         whenever(jobListingRepository.count()).thenReturn(1L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 75, ""))
+            AiMatchResponse(listOf(AiMatchResult("0", 75, "")), 500)
         )
 
         val result = jobSearchService.search(JobSearchRequest(tags = listOf("React")))
@@ -134,7 +137,7 @@ class JobSearchServiceTest {
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 80, "일치"))
+            AiMatchResponse(listOf(AiMatchResult("0", 80, "일치")), 500)
         )
         whenever(searchHistoryRepository.save(any<SearchHistory>())).thenAnswer { it.arguments[0] }
 
@@ -153,7 +156,7 @@ class JobSearchServiceTest {
     fun `search does not save history when user is not authenticated`() {
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
-        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
+        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(AiMatchResponse(emptyList(), 0))
 
         jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 
@@ -166,7 +169,7 @@ class JobSearchServiceTest {
         whenever(userRepository.findById(999L)).thenReturn(Optional.empty())
         whenever(hybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(jobListingRepository.count()).thenReturn(3L)
-        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(emptyList())
+        whenever(geminiService.matchJobs(any(), any(), any())).thenReturn(AiMatchResponse(emptyList(), 0))
 
         jobSearchService.search(JobSearchRequest(tags = listOf("React")))
 

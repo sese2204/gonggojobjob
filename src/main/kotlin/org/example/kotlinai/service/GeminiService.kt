@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.example.kotlinai.dto.response.AiMatchResult
 import org.example.kotlinai.global.exception.AiServiceException
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -26,10 +27,16 @@ data class AiActivitySummary(
     val description: String?,
 )
 
+data class AiMatchResponse(
+    val results: List<AiMatchResult>,
+    val inputChars: Int,
+)
+
 @Service
 class GeminiService(
     private val objectMapper: ObjectMapper,
 ) {
+    private val log = LoggerFactory.getLogger(GeminiService::class.java)
     @Value("\${gemini.api.key}")
     private lateinit var apiKey: String
 
@@ -54,15 +61,15 @@ class GeminiService(
         tags: List<String>,
         query: String,
         listings: List<AiJobSummary>,
-    ): List<AiMatchResult> = callGeminiApi(buildPrompt(tags, query, listings))
+    ): AiMatchResponse = callGeminiApi(buildPrompt(tags, query, listings))
 
     fun matchActivities(
         tags: List<String>,
         query: String,
         listings: List<AiActivitySummary>,
-    ): List<AiMatchResult> = callGeminiApi(buildActivityPrompt(tags, query, listings))
+    ): AiMatchResponse = callGeminiApi(buildActivityPrompt(tags, query, listings))
 
-    private fun callGeminiApi(prompt: String): List<AiMatchResult> {
+    private fun callGeminiApi(prompt: String): AiMatchResponse {
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf("parts" to listOf(mapOf("text" to prompt)))
@@ -72,11 +79,14 @@ class GeminiService(
             ),
         )
 
+        val requestJson = objectMapper.writeValueAsString(requestBody)
+        log.info("[Gemini] request chars={} est_tokens={}", requestJson.length, requestJson.length / 3)
+
         val rawResponse = try {
             restClient.post()
                 .uri(URI.create("$apiUrl?key=$apiKey"))
                 .header("Content-Type", "application/json")
-                .body(objectMapper.writeValueAsString(requestBody))
+                .body(requestJson)
                 .retrieve()
                 .body(Map::class.java)
         } catch (e: RestClientException) {
@@ -88,11 +98,12 @@ class GeminiService(
         val jsonText = extractJsonText(rawResponse)
             ?: throw AiServiceException("AI 응답에서 JSON을 추출할 수 없습니다.")
 
-        return try {
+        val results = try {
             objectMapper.readValue<List<AiMatchResult>>(jsonText)
         } catch (e: Exception) {
             throw AiServiceException("AI 응답 JSON 파싱 실패: ${e.message}", e)
         }
+        return AiMatchResponse(results = results, inputChars = requestJson.length)
     }
 
     @Suppress("UNCHECKED_CAST")

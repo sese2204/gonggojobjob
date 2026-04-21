@@ -1,0 +1,176 @@
+version: 2
+snapshotDate: "2026-04-20"
+# relevantIds filled from Gemini labeling (score=2 only). See eval/labeling/candidates-*.yaml.
+# Empty relevantIds → query is excluded from metric averages (runs for latency only).
+# v2 re-labeled on 2026-04-20 using Phase 1 (OR+prefix) pool, against current corpus.
+queries:
+  # ── Head (6) — 자주 쓰이는 단일 토큰
+  - id: q001
+    category: head
+    tags: []
+    query: "인턴"
+    relevantIds: [1151, 919, 851, 748, 580, 1149]
+    notes: "단일 토큰. 인턴 관련 활동이 상위에 와야 함."
+  - id: q002
+    category: head
+    tags: []
+    query: "공모전"
+    relevantIds: [207, 735, 1188, 1061, 901, 78, 430, 823, 738, 84, 163, 20, 742, 1, 736, 149, 1163, 86, 734, 728, 23, 39, 40, 1167, 201, 203]
+  - id: q003
+    category: head
+    tags: []
+    query: "대외활동"
+    relevantIds: [352, 762, 333, 220, 339, 340, 760, 331, 754, 751, 765, 755, 304, 1167, 200, 329, 337, 353, 377, 369, 605, 1009]
+  - id: q004
+    category: head
+    tags: []
+    query: "장학금"
+    relevantIds: [1155, 1136, 375, 106]
+  - id: q005
+    category: head
+    tags: []
+    query: "서포터즈"
+    relevantIds: [377, 362, 345, 348, 357, 760, 376, 368, 374, 337, 1084, 355, 329, 384, 378, 372, 1083, 365, 367, 743, 751, 1166, 235, 263, 284, 286, 288, 322, 323, 335, 336]
+  - id: q006
+    category: head
+    tags: []
+    query: "해커톤"
+    relevantIds: [59, 133, 108, 768]
+
+  # ── Short Korean (10) — 2~3 토큰 조합 (현재 깨진 케이스)
+  - id: q007
+    category: short_korean
+    tags: ["인턴"]
+    query: "IT"
+    relevantIds: [851, 641, 1149]
+    notes: "문제 재현 케이스."
+  - id: q008
+    category: short_korean
+    tags: []
+    query: "마케팅 대학생"
+    relevantIds: [921, 605, 839, 1091, 915, 656, 641, 426]
+  - id: q009
+    category: short_korean
+    tags: []
+    query: "데이터 분석"
+    relevantIds: [130, 168, 91, 73, 27, 177, 1184]
+  - id: q010
+    category: short_korean
+    tags: []
+    query: "백엔드 개발"
+    relevantIds: [22, 64, 1198, 202]
+  - id: q011
+    category: short_korean
+    tags: []
+    query: "UX 디자인"
+    relevantIds: [1086, 1143, 987]
+  - id: q012
+    category: short_korean
+    tags: ["인턴"]
+    query: "기획"
+    relevantIds: [580, 748]
+  - id: q013
+    category: short_korean
+    tags: []
+    query: "AI 공모전"
+    relevantIds: [1183, 437, 742, 955, 741, 871, 880, 833, 1188, 173, 1027, 926, 73, 148, 941, 1001, 924, 86, 990, 84, 1052, 47]
+  - id: q014
+    category: short_korean
+    tags: []
+    query: "스타트업 인턴"
+    relevantIds: []
+    notes: "Gemini score=2 none; marginal-only — excluded from averages."
+  - id: q015
+    category: short_korean
+    tags: []
+    query: "금융 공모전"
+    relevantIds: [798, 950, 879, 1082, 1037, 82]
+  - id: q016
+    category: short_korean
+    tags: []
+    query: "환경 서포터즈"
+    relevantIds: [747, 213, 365, 384, 1022]
+
+  # ── Long natural (6) — 긴 자연어, HyDE 강점 기대
+  - id: q017
+    category: long_natural
+    tags: []
+    query: "백엔드 개발 직무 체험 프로그램"
+    relevantIds: [641, 598]
+  - id: q018
+    category: long_natural
+    tags: []
+    query: "대학생 창업 경진대회"
+    relevantIds: [1189, 1067, 741, 437, 981, 727, 58, 1052, 44, 34, 428, 63, 1089, 1167, 1142, 22, 202]
+  - id: q019
+    category: long_natural
+    tags: []
+    query: "해외 문화 교류 프로그램"
+    relevantIds: [1153, 1154, 928, 673]
+  - id: q020
+    category: long_natural
+    tags: []
+    query: "데이터 사이언스 실무 인턴"
+    relevantIds: []
+    notes: "Gemini score=2 none; marginal-only — excluded from averages."
+  - id: q021
+    category: long_natural
+    tags: []
+    query: "비전공자 IT 부트캠프"
+    relevantIds: [598]
+  - id: q022
+    category: long_natural
+    tags: []
+    query: "여름방학 단기 활동"
+    relevantIds: [917, 870, 937, 848]
+
+  # ── Synonym (4) — 동의어/약어 처리
+  - id: q023
+    category: synonym
+    tags: []
+    query: "ML"
+    relevantIds: [1058, 124, 133, 34, 598, 337, 73, 31, 990, 926, 178]
+    notes: "머신러닝 약어. 임베딩 품질 검증."
+  - id: q024
+    category: synonym
+    tags: []
+    query: "AI 인턴"
+    relevantIds: [656]
+  - id: q025
+    category: synonym
+    tags: []
+    query: "UX/UI"
+    relevantIds: [1086, 1143, 987]
+    notes: "특수문자 포함. 현재 로직은 특수문자 stripped."
+  - id: q026
+    category: synonym
+    tags: []
+    query: "프론트"
+    relevantIds: []
+    notes: "프론트엔드 prefix. 현재 corpus에 매칭 없음."
+
+  # ── Adversarial (4) — 실패 모드 관찰 (정답 0개 허용)
+  - id: q027
+    category: adversarial
+    tags: []
+    query: "xyz123"
+    relevantIds: []
+    notes: "무의미 토큰. zero-result 기대."
+  - id: q028
+    category: adversarial
+    tags: []
+    query: "인턴인턴인턴"
+    relevantIds: [1151, 851, 919, 748]
+    notes: "반복 토큰 — 인턴 관련 결과로 정규화 기대."
+  - id: q029
+    category: adversarial
+    tags: ["인턴"]
+    query: ""
+    relevantIds: [1151, 919, 748, 851, 580, 641, 1149]
+    notes: "tag-only."
+  - id: q030
+    category: adversarial
+    tags: []
+    query: "인턴쉽"
+    relevantIds: [919, 1151, 851, 748, 580, 1149]
+    notes: "오타. 인턴십과 매칭 여부."

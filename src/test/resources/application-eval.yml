@@ -1,0 +1,105 @@
+# Eval profile — connects to the same Postgres DB as `local` (pgvector required).
+# Values mirror application-local.yml; can be overridden via env vars.
+# Optional:
+#   EVAL_LABEL (used by SearchEvalTest to name output JSON), default: unknown
+spring:
+  application:
+    name: kotlin-ai-eval
+
+  datasource:
+    url: ${EVAL_DB_URL:jdbc:postgresql://caboose.proxy.rlwy.net:50208/railway}
+    driver-class-name: org.postgresql.Driver
+    username: ${EVAL_DB_USERNAME:postgres}
+    password: ${EVAL_DB_PASSWORD:pIRDIgpcvCIInKBCukYvqhybmDWDkquV}
+
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: eval-client-id
+            client-secret: eval-client-secret
+            scope: email, profile
+
+  task:
+    scheduling:
+      enabled: false
+
+jwt:
+  secret: eval-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-algorithm
+  access-token-expiration: 1800000
+  refresh-token-expiration: 604800000
+
+oauth2:
+  redirect-uri: http://localhost/oauth/callback
+
+gemini:
+  api:
+    key: ${EVAL_GEMINI_API_KEY:AIzaSyD6gQUV0f3vtHYOGDwPcgT7DvsVkA0WZqQ}
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    timeout-seconds: 30
+  embedding:
+    model: gemini-embedding-001
+    dimensions: 768
+    batch-size: 10
+
+rag:
+  search:
+    top-n: 20
+    keyword-weight: 0.5
+    vector-weight: 0.5
+
+cors:
+  allowed-origins: http://localhost
+
+# Source API keys left empty — eval doesn't ingest, only searches.
+goyong24:
+  api:
+    key: ""
+    url: https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L21.do
+    timeout-seconds: 30
+wanted:
+  api:
+    url: https://www.wanted.co.kr/api/v4/jobs
+    timeout-seconds: 30
+    country: kr
+    job-sort: job.latest_order
+    years: "0,1"
+    locations: all
+    limit: 20
+    max-pages-per-category: 1
+    page-delay-ms: 500
+    tag-type-ids: "518"
+allcon:
+  api:
+    url: https://www.all-con.co.kr/page/ajax.contest_list.php
+    max-pages: 1
+    page-delay-ms: 0
+    page-size: 15
+wevity:
+  api:
+    base-url: https://www.wevity.com
+    max-pages: 1
+    page-delay-ms: 0
+thinkcontest:
+  api:
+    url: https://www.thinkcontest.com/thinkgood/user
+    records-per-page: 10
+    max-pages: 1
+    page-delay-ms: 0
+
+logging:
+  level:
+    org.example.kotlinai.service: INFO
+    org.example.kotlinai.eval: INFO

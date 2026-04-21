@@ -47,17 +47,18 @@ class ActivityHybridSearchService(
         }
 
     private fun fetchKeywordResults(searchText: String, limit: Int): List<ActivityListing> {
-        val tsQuery = searchText.trim()
+        val tokens = searchText.trim()
             .replace("[()/<>&|!:*\\\\]".toRegex(), " ")
             .split("\\s+".toRegex())
             .filter { it.isNotBlank() }
-            .joinToString(" & ")
 
-        val results = activityListingRepository.findByKeyword(tsQuery, limit)
-        if (results.isNotEmpty()) return results
+        if (tokens.isEmpty()) return emptyList()
 
-        val pattern = "%${searchText.trim()}%"
-        return activityListingRepository.findByKeywordLike(pattern, limit)
+        // OR + prefix matching: "인턴:* | IT:*"
+        //   - OR so 2~3 토큰 쿼리가 모든 토큰을 요구하지 않도록
+        //   - prefix(:*)로 "인턴" 입력이 "인턴십"/"인턴쉽" 매칭
+        val tsQuery = tokens.joinToString(" | ") { "$it:*" }
+        return activityListingRepository.findByKeyword(tsQuery, limit)
     }
 
     private fun mergeByRrf(

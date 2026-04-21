@@ -44,12 +44,14 @@ class ActivityIngestionServiceTest {
     private val ingestionRunRepository: IngestionRunRepository = mock()
     private val embeddingService: EmbeddingService = mock()
     private val activityListingSaver: ActivityListingSaver = mock()
+    private val embeddingUpdater: EmbeddingUpdater = mock()
     private val service = ActivityIngestionService(
         clients = listOf(mockClient),
         activityListingRepository = activityListingRepository,
         ingestionRunRepository = ingestionRunRepository,
         embeddingService = embeddingService,
         activityListingSaver = activityListingSaver,
+        embeddingUpdater = embeddingUpdater,
     )
 
     private fun stubSave() {
@@ -116,6 +118,7 @@ class ActivityIngestionServiceTest {
             ingestionRunRepository = ingestionRunRepository,
             embeddingService = embeddingService,
             activityListingSaver = activityListingSaver,
+            embeddingUpdater = embeddingUpdater,
         )
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())

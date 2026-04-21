@@ -3,6 +3,7 @@ package org.example.kotlinai.service
 import org.example.kotlinai.config.RagProperties
 import org.example.kotlinai.dto.request.ActivitySearchRequest
 import org.example.kotlinai.dto.response.AiMatchResult
+import org.example.kotlinai.service.AiMatchResponse
 import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.entity.ActivitySearchHistory
 import org.example.kotlinai.entity.User
@@ -34,6 +35,7 @@ class ActivitySearchServiceTest {
     private lateinit var activityHybridSearchService: ActivityHybridSearchService
     private lateinit var userRepository: UserRepository
     private lateinit var activitySearchHistoryRepository: ActivitySearchHistoryRepository
+    private lateinit var searchCacheService: SearchCacheService
     private lateinit var activitySearchService: ActivitySearchService
     private val ragProperties = RagProperties()
 
@@ -59,9 +61,10 @@ class ActivitySearchServiceTest {
         activityHybridSearchService = mock()
         userRepository = mock()
         activitySearchHistoryRepository = mock()
+        searchCacheService = SearchCacheService()
         activitySearchService = ActivitySearchService(
             activityListingRepository, geminiService, activityHybridSearchService,
-            ragProperties, userRepository, activitySearchHistoryRepository,
+            ragProperties, userRepository, activitySearchHistoryRepository, searchCacheService,
         )
         SecurityContextHolder.clearContext()
     }
@@ -103,11 +106,11 @@ class ActivitySearchServiceTest {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(activityListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(
-            listOf(
+            AiMatchResponse(listOf(
                 AiMatchResult("0", 50, "부분 일치"),
                 AiMatchResult("0", 90, "높은 일치"),
                 AiMatchResult("0", 30, "낮은 일치"),
-            ),
+            ), 1000),
         )
 
         val result = activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))
@@ -121,7 +124,7 @@ class ActivitySearchServiceTest {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(listOf(sampleListings[0]))
         whenever(activityListingRepository.count()).thenReturn(1L)
         whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 150, "점수 초과")),
+            AiMatchResponse(listOf(AiMatchResult("0", 150, "점수 초과")), 500),
         )
 
         val result = activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))
@@ -134,7 +137,7 @@ class ActivitySearchServiceTest {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(listOf(sampleListings[0]))
         whenever(activityListingRepository.count()).thenReturn(1L)
         whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 75, "")),
+            AiMatchResponse(listOf(AiMatchResult("0", 75, "")), 500),
         )
 
         val result = activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))
@@ -147,7 +150,7 @@ class ActivitySearchServiceTest {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(listOf(sampleListings[0]))
         whenever(activityListingRepository.count()).thenReturn(1L)
         whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 80, "매칭")),
+            AiMatchResponse(listOf(AiMatchResult("0", 80, "매칭")), 500),
         )
 
         val result = activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))
@@ -166,7 +169,7 @@ class ActivitySearchServiceTest {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(activityListingRepository.count()).thenReturn(3L)
         whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(
-            listOf(AiMatchResult("0", 80, "일치")),
+            AiMatchResponse(listOf(AiMatchResult("0", 80, "일치")), 500),
         )
         whenever(activitySearchHistoryRepository.save(any<ActivitySearchHistory>())).thenAnswer { it.arguments[0] }
 
@@ -185,7 +188,7 @@ class ActivitySearchServiceTest {
     fun `search does not save history when user is not authenticated`() {
         whenever(activityHybridSearchService.search(any(), any(), any())).thenReturn(sampleListings)
         whenever(activityListingRepository.count()).thenReturn(3L)
-        whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(emptyList())
+        whenever(geminiService.matchActivities(any(), any(), any())).thenReturn(AiMatchResponse(emptyList(), 0))
 
         activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))
 
@@ -195,7 +198,7 @@ class ActivitySearchServiceTest {
     @Test
     fun `search throws DailySearchLimitExceededException when limit reached`() {
         setAuthenticatedUser(1L)
-        whenever(activitySearchHistoryRepository.countByUserIdAndSearchedAtAfter(any(), any())).thenReturn(5L)
+        whenever(activitySearchHistoryRepository.countByUserIdAndSearchedAtAfter(any(), any())).thenReturn(15L)
 
         assertThrows<DailySearchLimitExceededException> {
             activitySearchService.search(ActivitySearchRequest(tags = listOf("IT")))

@@ -59,6 +59,7 @@ class JobSearchService(
 
         log.info("[Search] 요청 - tags={}, query='{}'", request.tags, request.query)
 
+        val startMs = System.currentTimeMillis()
         val totalCount = jobListingRepository.count().toInt()
         val today = LocalDate.now()
 
@@ -67,8 +68,9 @@ class JobSearchService(
 
         if (listings.isEmpty()) {
             log.warn("[Search] 하이브리드 검색 결과 0건 → 빈 응답 반환")
+            val latencyMs = System.currentTimeMillis() - startMs
             val response = JobSearchResponse(jobs = emptyList(), totalCount = totalCount, newTodayCount = 0)
-            saveSearchHistory(request, emptyList(), emptyMap(), userId)
+            saveSearchHistory(request, emptyList(), emptyMap(), userId, listings.size, null, latencyMs)
             searchCacheService.put(cacheKey, response)
             return response
         }
@@ -76,12 +78,16 @@ class JobSearchService(
         val newTodayCount = listings.count { it.collectedAt.toLocalDate() == today }
 
         val summaries = listings.map { it.toAiSummary() }
-        val aiResultMap = try {
-            geminiService.matchJobs(request.tags, request.query, summaries).associateBy { it.id }
+        val (aiResultMap, geminiInputChars) = try {
+            val response = geminiService.matchJobs(request.tags, request.query, summaries)
+            response.results.associateBy { it.id } to response.inputChars
         } catch (e: Exception) {
             log.warn("[Search] AI 매칭 실패, 점수 없이 반환: {}", e.message)
-            emptyMap()
+            emptyMap<String, AiMatchResult>() to null
         }
+
+        val latencyMs = System.currentTimeMillis() - startMs
+        log.info("[Search] latency={}ms geminiInputChars={}", latencyMs, geminiInputChars)
 
         val jobs = listings
             .map { listing ->
@@ -92,7 +98,7 @@ class JobSearchService(
 
         log.info("[Search] 최종 응답 - {}건, totalCount={}, newToday={}", jobs.size, totalCount, newTodayCount)
 
-        saveSearchHistory(request, listings, aiResultMap, userId)
+        saveSearchHistory(request, listings, aiResultMap, userId, listings.size, geminiInputChars, latencyMs)
 
         val response = JobSearchResponse(jobs = jobs, totalCount = totalCount, newTodayCount = newTodayCount)
         searchCacheService.put(cacheKey, response)
@@ -115,6 +121,9 @@ class JobSearchService(
         listings: List<JobListing>,
         aiResultMap: Map<String, AiMatchResult>,
         userId: Long?,
+        hybridResultCount: Int,
+        geminiInputChars: Int?,
+        latencyMs: Long,
     ) {
         if (userId == null) {
             log.warn("[Search] 인증된 사용자 없음 — 검색 기록 저장 스킵 (토큰 미포함 또는 만료)")
@@ -132,6 +141,9 @@ class JobSearchService(
             tagsString = request.tags.takeIf { it.isNotEmpty() }?.joinToString(","),
             query = request.query.takeIf { it.isNotBlank() },
             resultCount = listings.size,
+            hybridResultCount = hybridResultCount,
+            geminiInputChars = geminiInputChars,
+            latencyMs = latencyMs,
         )
 
         listings.forEach { listing ->
