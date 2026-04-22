@@ -7,7 +7,9 @@ import org.example.kotlinai.dto.request.ActivitySearchRequest
 import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.service.ActivitySearchService
+import org.example.kotlinai.service.EmbeddingService.Companion.toVectorString
 import org.example.kotlinai.service.SearchCacheService
+import org.example.kotlinai.service.UpstageEmbeddingService
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
@@ -39,6 +41,7 @@ class LabelingHelperTest(
     @Autowired private val activitySearchService: ActivitySearchService,
     @Autowired private val activityListingRepository: ActivityListingRepository,
     @Autowired private val searchCacheService: SearchCacheService,
+    @Autowired private val upstageEmbeddingService: UpstageEmbeddingService,
 ) {
     private val log = LoggerFactory.getLogger(LabelingHelperTest::class.java)
     private val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
@@ -78,13 +81,24 @@ class LabelingHelperTest(
             log.info("[{}/{}] labeling {} tags={} query='{}'", idx + 1, querySet.queries.size, q.id, q.tags, q.query)
             clearCache()
 
-            val hybridPool = runCatching {
+            // Gemini hybrid (keyword + Gemini vector)
+            val geminiPool = runCatching {
                 activitySearchService.search(ActivitySearchRequest(tags = q.tags, query = q.query))
                     .activities.mapNotNull { it.id.toLongOrNull() }
             }.getOrDefault(emptyList())
 
+            // Upstage vector — separate direct search to avoid provider config dependency
+            val searchText = (q.tags + q.query.split(" ").filter { it.isNotBlank() })
+                .joinToString(" ").ifBlank { q.query }
+            val upstagePool = if (searchText.isBlank()) emptyList() else runCatching {
+                val vec = upstageEmbeddingService.embedQuery(searchText)
+                activityListingRepository.findByUpstageVectorSimilarity(vec.toVectorString(), 20)
+                    .map { it.id }
+            }.onFailure { log.warn("[labeling] {} upstage pool failed: {}", q.id, it.message) }
+                .getOrDefault(emptyList())
+
             val ilikePool = ilikeCandidates(q.tags + q.query.split(" ").filter { it.isNotBlank() }, 15)
-            val poolIds = (hybridPool + ilikePool).distinct().take(50)
+            val poolIds = (geminiPool + upstagePool + ilikePool).distinct().take(80)
             val listings = activityListingRepository.findAllById(poolIds).associateBy { it.id }
 
             val scored = if (poolIds.isEmpty()) emptyList()

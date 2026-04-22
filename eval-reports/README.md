@@ -115,6 +115,40 @@ By category (Recall@10):
 
 ## Runs
 
+### Round 2 — labeling snapshot 2026-04-22 (`runs/round-2/`)
+
+**목표**: Gemini 임베딩(768d) vs Upstage Solar 임베딩(4096d) A/B 비교.
+Upstage는 한국어 특화 + 고차원이라 우위가 예상됐으나 결과는 반대.
+
+| Label | Recall@10 | nDCG@10 | P@5 | MRR | p50 |
+|---|---|---|---|---|---|
+| `round2-gemini` | **0.834** | **0.955** | **0.728** | **0.960** | 17.3s |
+| `round2-upstage` | 0.737 | 0.833 | 0.600 | 0.947 | 17.6s |
+
+By category (Recall@10):
+
+| Category | round2-gemini | round2-upstage |
+|---|---|---|
+| head (n=6) | **0.703** | — |
+| short_korean (n=10) | **0.825** | — |
+| long_natural (n=6) | **0.844** | — |
+| synonym (n=4) | **0.933** | — |
+| adversarial (n=4) | **1.000** | **1.000** |
+
+**⚠️ 결과를 신뢰할 수 없음 — 라벨 편향(label bias) 문제**
+
+Round 2 라벨링은 `activitySearchService.search()`(기본 provider = Gemini)의
+검색 결과를 후보 풀로 사용해 Gemini가 0/1/2 채점했다.
+즉, **relevantIds가 Gemini가 찾은 문서로만 구성**됨.
+
+Upstage가 Gemini와 다른 관련 문서를 찾아와도 라벨 후보에 없기 때문에
+true positive로 인정받지 못한다. eval 자체가 Gemini 편향.
+
+**수정 방향 (Round 3)**:
+- 라벨링 후보 풀 = Gemini hybrid pool + Upstage vector pool + ILIKE pool
+- 두 모델이 각자 찾는 문서를 모두 포함시킨 뒤 Gemini LLM이 공정하게 채점
+- `LabelingHelperTest` 수정 완료: `poolIds = (geminiPool + upstagePool + ilikePool).distinct().take(80)`
+
 ### Round 1 — labeling snapshot 2026-04-20 (`runs/round-1/`)
 
 | Label | Date | Commit | Corpus snapshot | Notes |
