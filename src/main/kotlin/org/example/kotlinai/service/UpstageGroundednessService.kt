@@ -20,7 +20,7 @@ class UpstageGroundednessService(
     private lateinit var apiKey: String
 
     // Chat Completions 엔드포인트로 groundedness-check 모델 사용
-    private val baseUrl = "https://api.upstage.ai/v1/solar/chat/completions"
+    private val baseUrl = "https://api.upstage.ai/v1/chat/completions"
 
     enum class Groundedness { GROUNDED, NOT_GROUNDED, NOT_SURE }
 
