@@ -46,6 +46,13 @@ class ActivityListing(
 
     var embeddingModel: String? = null,
 
+    @Column(insertable = false, updatable = false, columnDefinition = "vector(4096)")
+    var embeddingUpstage: String? = null,
+
+    var embeddedUpstageAt: LocalDateTime? = null,
+
+    var embeddingUpstageModel: String? = null,
+
     val deadline: LocalDate? = null,
 
     @Column(insertable = false, updatable = false, columnDefinition = "tsvector")

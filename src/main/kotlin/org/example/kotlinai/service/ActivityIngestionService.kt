@@ -23,6 +23,7 @@ class ActivityIngestionService(
     private val activityListingRepository: ActivityListingRepository,
     private val ingestionRunRepository: IngestionRunRepository,
     private val embeddingService: EmbeddingService,
+    private val upstageEmbeddingService: UpstageEmbeddingService,
     private val activityListingSaver: ActivityListingSaver,
     private val embeddingUpdater: EmbeddingUpdater,
 ) {
@@ -113,6 +114,74 @@ class ActivityIngestionService(
             processedCount = processedCount,
             failedCount = failedCount,
             totalUnembedded = remainingUnembedded,
+        )
+    }
+
+    fun backfillUpstageEmbeddings(): ActivityBackfillResponse {
+        val unembedded = activityListingRepository.findByEmbeddingUpstageIsNull()
+        if (unembedded.isEmpty()) {
+            return ActivityBackfillResponse(processedCount = 0, failedCount = 0, totalUnembedded = 0)
+        }
+
+        var processedCount = 0
+        var failedCount = 0
+
+        val chunks = unembedded.chunked(10)
+        var connectionFailed = false
+        for ((index, batch) in chunks.withIndex()) {
+            if (connectionFailed) {
+                failedCount += batch.size
+                continue
+            }
+
+            val texts = batch.map { buildEmbeddingText(it) }
+            var success = false
+            var retries = 0
+            val maxRetries = 3
+
+            while (!success && retries <= maxRetries) {
+                try {
+                    val embeddings = upstageEmbeddingService.embedPassages(texts)
+                    batch.zip(embeddings).forEach { (listing, embedding) ->
+                        embeddingUpdater.updateActivityUpstageEmbedding(
+                            id = listing.id,
+                            embedding = embedding.toVectorString(),
+                            embeddedAt = LocalDateTime.now(),
+                            embeddingModel = upstageEmbeddingService.passageModelName,
+                        )
+                        processedCount++
+                    }
+                    log.info("[Upstage Backfill] 배치 {}/{} 완료 ({}건)", index + 1, chunks.size, batch.size)
+                    success = true
+                } catch (e: Exception) {
+                    retries++
+                    if (isConnectionFailure(e)) {
+                        log.error("[Upstage Backfill] DB 커넥션 실패 감지, 나머지 배치 건너뜀")
+                        failedCount += batch.size
+                        connectionFailed = true
+                        break
+                    }
+                    if (retries > maxRetries) {
+                        log.warn("[Upstage Backfill] 배치 {}/{} 최종 실패: {}", index + 1, chunks.size, e.message)
+                        failedCount += batch.size
+                    } else {
+                        val backoff = retries * 5_000L
+                        log.info("[Upstage Backfill] 배치 {}/{} 실패, {}초 후 재시도 ({}/{})", index + 1, chunks.size, backoff / 1000, retries, maxRetries)
+                        Thread.sleep(backoff)
+                    }
+                }
+            }
+
+            if (!connectionFailed && index < chunks.size - 1) {
+                Thread.sleep(500)
+            }
+        }
+
+        val remaining = activityListingRepository.findByEmbeddingUpstageIsNull().size
+        return ActivityBackfillResponse(
+            processedCount = processedCount,
+            failedCount = failedCount,
+            totalUnembedded = remaining,
         )
     }
 

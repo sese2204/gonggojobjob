@@ -53,8 +53,8 @@ class ActivityIngestionController(
         activityIngestionService.getHistory()
 
     @Operation(
-        summary = "임베딩 백필",
-        description = "임베딩이 없는 기존 공모전/대외활동에 대해 벡터 임베딩을 일괄 생성합니다.",
+        summary = "임베딩 백필 (Gemini)",
+        description = "임베딩이 없는 기존 공모전/대외활동에 대해 Gemini 벡터 임베딩을 일괄 생성합니다.",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "백필 완료"),
@@ -67,4 +67,20 @@ class ActivityIngestionController(
     @PostMapping("/backfill-embeddings")
     fun backfillEmbeddings(): ActivityBackfillResponse =
         activityIngestionService.backfillEmbeddings()
+
+    @Operation(
+        summary = "임베딩 백필 (Upstage Solar)",
+        description = "Upstage Solar 임베딩이 없는 기존 공모전/대외활동에 대해 4096차원 벡터 임베딩을 일괄 생성합니다.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "백필 완료"),
+        ApiResponse(
+            responseCode = "503",
+            description = "임베딩 서비스 불가",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @PostMapping("/backfill-upstage-embeddings")
+    fun backfillUpstageEmbeddings(): ActivityBackfillResponse =
+        activityIngestionService.backfillUpstageEmbeddings()
 }

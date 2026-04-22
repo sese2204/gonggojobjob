@@ -8,6 +8,7 @@ import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.service.ActivitySearchService
 import org.example.kotlinai.service.SearchCacheService
+import org.example.kotlinai.service.UpstageGroundednessService
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
@@ -39,6 +40,7 @@ class LabelingHelperTest(
     @Autowired private val activitySearchService: ActivitySearchService,
     @Autowired private val activityListingRepository: ActivityListingRepository,
     @Autowired private val searchCacheService: SearchCacheService,
+    @Autowired private val upstageGroundednessService: UpstageGroundednessService,
 ) {
     private val log = LoggerFactory.getLogger(LabelingHelperTest::class.java)
     private val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
@@ -89,6 +91,16 @@ class LabelingHelperTest(
                 .onFailure { log.warn("[labeling] {} gemini failed: {}", q.id, it.message) }
                 .getOrDefault(emptyList())
 
+            val groundednessScored = if (poolIds.isEmpty()) emptyMap()
+            else poolIds.mapNotNull { listings[it] }.associate { l ->
+                val context = buildContext(l)
+                val answer = buildAnswer(q)
+                val groundedness = runCatching { upstageGroundednessService.check(context, answer) }
+                    .onFailure { log.warn("[labeling] {} groundedness failed id={}: {}", q.id, l.id, it.message) }
+                    .getOrDefault(UpstageGroundednessService.Groundedness.NOT_SURE)
+                l.id to upstageGroundednessService.toScore(groundedness)
+            }
+
             out.appendLine("  - id: ${q.id}")
             out.appendLine("    category: ${q.category}")
             out.appendLine("    tags: ${q.tags}")
@@ -96,8 +108,9 @@ class LabelingHelperTest(
             out.appendLine("    candidates:")
             poolIds.forEach { id ->
                 val l = listings[id] ?: return@forEach
-                val score = scored.firstOrNull { it.id == id }?.score ?: 0
-                out.appendLine("      - id: $id   # score=$score")
+                val geminiScore = scored.firstOrNull { it.id == id }?.score ?: 0
+                val upstageScore = groundednessScored[id] ?: 0
+                out.appendLine("      - id: $id   # gemini=$geminiScore upstage=$upstageScore")
                 out.appendLine("        title: ${escape(l.title)}")
                 out.appendLine("        category: ${escape(l.category ?: "")}")
                 out.appendLine("        organizer: ${escape(l.organizer)}")
@@ -109,6 +122,19 @@ class LabelingHelperTest(
         val file = File(outputDir, "candidates-${LocalDate.now()}.yaml")
         file.writeText(out.toString())
         log.info("[Labeling] wrote → {}", file.absolutePath)
+    }
+
+    private fun buildContext(listing: ActivityListing): String =
+        listOfNotNull(
+            listing.title,
+            listing.organizer,
+            listing.category,
+            (listing.description ?: "").take(300),
+        ).filter { it.isNotBlank() }.joinToString("\n")
+
+    private fun buildAnswer(q: EvalQuery): String {
+        val queryParts = (q.tags + q.query).filter { it.isNotBlank() }
+        return "이 활동은 ${queryParts.joinToString(", ")} 관련 활동입니다."
     }
 
     private fun escape(s: String): String = "\"" + s.replace("\"", "\\\"").replace("\n", " ").trim() + "\""

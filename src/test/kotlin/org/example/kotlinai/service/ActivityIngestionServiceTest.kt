@@ -43,6 +43,7 @@ class ActivityIngestionServiceTest {
     private val activityListingRepository: ActivityListingRepository = mock()
     private val ingestionRunRepository: IngestionRunRepository = mock()
     private val embeddingService: EmbeddingService = mock()
+    private val upstageEmbeddingService: UpstageEmbeddingService = mock()
     private val activityListingSaver: ActivityListingSaver = mock()
     private val embeddingUpdater: EmbeddingUpdater = mock()
     private val service = ActivityIngestionService(
@@ -50,6 +51,7 @@ class ActivityIngestionServiceTest {
         activityListingRepository = activityListingRepository,
         ingestionRunRepository = ingestionRunRepository,
         embeddingService = embeddingService,
+        upstageEmbeddingService = upstageEmbeddingService,
         activityListingSaver = activityListingSaver,
         embeddingUpdater = embeddingUpdater,
     )
@@ -117,6 +119,7 @@ class ActivityIngestionServiceTest {
             activityListingRepository = activityListingRepository,
             ingestionRunRepository = ingestionRunRepository,
             embeddingService = embeddingService,
+            upstageEmbeddingService = upstageEmbeddingService,
             activityListingSaver = activityListingSaver,
             embeddingUpdater = embeddingUpdater,
         )

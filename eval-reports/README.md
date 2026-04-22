@@ -5,10 +5,18 @@ Rolling record of retrieval-quality experiments on the Activity hybrid search pa
 
 ## Layout
 
-- `runs/` — raw JSON reports emitted by `SearchEvalTest` (one per `EVAL_LABEL` run).
-  Source copy lives under `src/test/resources/eval/results/`; this folder is the
-  human-readable archive kept at the repo root.
+- `runs/` — raw JSON reports emitted by `SearchEvalTest`, organized by round.
+  Each round has its own labeling snapshot (re-labeling starts a new round).
+  Source copy lives under `src/test/resources/eval/results/<round>/`.
+  - `runs/round-1/` — 1차 테스트 (labeling snapshot: 2026-04-20, corpus drift noted)
 - `README.md` (this file) — current metrics table + changelog.
+
+### Round 개념
+
+- **라운드** = 동일한 `eval-queries.yaml` 라벨링 스냅샷을 사용하는 실행 묶음.
+- corpus drift(매일 공고 업데이트)로 인해 라운드를 넘나드는 비교는 의미 없음.
+- 새 라운드 시작 조건: `LabelingHelperTest`로 재라벨링 후 `eval-queries.yaml` 갱신.
+- 새 라운드 디렉토리: `runs/round-N/`, `src/test/resources/eval/results/round-N/`.
 
 ## How runs are produced
 
@@ -106,6 +114,8 @@ By category (Recall@10):
   will need a different lever (e.g., Phase 2 HyDE or query rewriting).
 
 ## Runs
+
+### Round 1 — labeling snapshot 2026-04-20 (`runs/round-1/`)
 
 | Label | Date | Commit | Corpus snapshot | Notes |
 |---|---|---|---|---|

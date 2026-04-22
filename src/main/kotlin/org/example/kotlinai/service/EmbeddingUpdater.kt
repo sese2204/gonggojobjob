@@ -22,4 +22,9 @@ class EmbeddingUpdater(
     fun updateActivityEmbedding(id: Long, embedding: String, embeddedAt: LocalDateTime, embeddingModel: String) {
         activityListingRepository.updateEmbedding(id, embedding, embeddedAt, embeddingModel)
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun updateActivityUpstageEmbedding(id: Long, embedding: String, embeddedAt: LocalDateTime, embeddingModel: String) {
+        activityListingRepository.updateUpstageEmbedding(id, embedding, embeddedAt, embeddingModel)
+    }
 }
