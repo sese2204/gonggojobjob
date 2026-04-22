@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 import kotlin.system.measureTimeMillis
 
 @SpringBootTest
-@ActiveProfiles("eval")
+@ActiveProfiles("local", "eval")
 @Tag("eval")
 class SearchEvalTest(
     @Autowired private val activitySearchService: ActivitySearchService,

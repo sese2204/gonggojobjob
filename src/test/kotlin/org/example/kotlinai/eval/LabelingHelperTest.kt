@@ -34,7 +34,7 @@ import java.time.LocalDate
  * Run: EVAL_LABEL=label ./gradlew test --tests LabelingHelperTest -PincludeTags=eval-label
  */
 @SpringBootTest
-@ActiveProfiles("eval")
+@ActiveProfiles("local", "eval")
 @Tag("eval-label")
 class LabelingHelperTest(
     @Autowired private val activitySearchService: ActivitySearchService,
