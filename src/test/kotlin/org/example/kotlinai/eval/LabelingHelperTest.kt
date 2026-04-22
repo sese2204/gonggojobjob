@@ -63,6 +63,7 @@ class LabelingHelperTest(
     @Test
     fun `generate labeling candidates`() {
         val outputDir = System.getenv("EVAL_OUTPUT_DIR") ?: "src/test/resources/eval/labeling"
+        val querySetPath = System.getenv("EVAL_QUERY_SET_PATH") ?: "src/test/resources/eval/eval-queries.yaml"
         Files.createDirectories(Paths.get(outputDir))
 
         val querySet = EvalIo.loadQuerySet("eval/eval-queries.yaml")
@@ -70,8 +71,12 @@ class LabelingHelperTest(
 
         val out = StringBuilder()
         out.appendLine("# Labeling candidates — generated ${LocalDate.now()}")
-        out.appendLine("# Review each candidate. Copy IDs with score >= 2 (or your judgement) into eval-queries.yaml#relevantIds")
+        out.appendLine("# gemini=2 → auto-written to eval-queries.yaml relevantIds")
+        out.appendLine("# upstage = Groundedness Check score (참고용, 라벨 반영 안 됨)")
         out.appendLine("queries:")
+
+        // queryId → gemini score=2 인 ID 목록 (eval-queries.yaml 자동 갱신용)
+        val newRelevantIds = mutableMapOf<String, List<Long>>()
 
         querySet.queries.forEachIndexed { idx, q ->
             log.info("[{}/{}] labeling {} tags={} query='{}'", idx + 1, querySet.queries.size, q.id, q.tags, q.query)
@@ -101,6 +106,8 @@ class LabelingHelperTest(
                 l.id to upstageGroundednessService.toScore(groundedness)
             }
 
+            newRelevantIds[q.id] = scored.filter { it.score == 2 }.map { it.id }
+
             out.appendLine("  - id: ${q.id}")
             out.appendLine("    category: ${q.category}")
             out.appendLine("    tags: ${q.tags}")
@@ -119,9 +126,22 @@ class LabelingHelperTest(
             }
         }
 
-        val file = File(outputDir, "candidates-${LocalDate.now()}.yaml")
-        file.writeText(out.toString())
-        log.info("[Labeling] wrote → {}", file.absolutePath)
+        val candidatesFile = File(outputDir, "candidates-${LocalDate.now()}.yaml")
+        candidatesFile.writeText(out.toString())
+        log.info("[Labeling] candidates → {}", candidatesFile.absolutePath)
+
+        val updatedQueries = querySet.queries.map { q ->
+            q.copy(relevantIds = newRelevantIds[q.id] ?: emptyList())
+        }
+        val updatedQuerySet = querySet.copy(
+            version = querySet.version + 1,
+            snapshotDate = LocalDate.now().toString(),
+            queries = updatedQueries,
+        )
+        EvalIo.writeQuerySet(updatedQuerySet, querySetPath)
+        log.info("[Labeling] eval-queries.yaml updated → version={} snapshotDate={} total relevantIds={}",
+            updatedQuerySet.version, updatedQuerySet.snapshotDate,
+            updatedQueries.sumOf { it.relevantIds.size })
     }
 
     private fun buildContext(listing: ActivityListing): String =
