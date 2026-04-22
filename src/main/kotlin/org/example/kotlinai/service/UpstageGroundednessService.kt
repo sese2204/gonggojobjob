@@ -45,7 +45,7 @@ class UpstageGroundednessService(
      */
     fun check(context: String, answer: String): Groundedness {
         val body = mapOf(
-            "model" to "groundedness-check",
+            "model" to "groundedness-check-240502",
             "messages" to listOf(
                 mapOf("role" to "user", "content" to context),
                 mapOf("role" to "assistant", "content" to answer),
