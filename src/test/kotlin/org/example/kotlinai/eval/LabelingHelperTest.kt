@@ -8,7 +8,6 @@ import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.service.ActivitySearchService
 import org.example.kotlinai.service.SearchCacheService
-import org.example.kotlinai.service.UpstageGroundednessService
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
@@ -28,10 +27,10 @@ import java.time.LocalDate
 
 /**
  * One-shot helper. Builds a labeling candidate pool per query and asks Gemini
- * to score each candidate 0/1/2. Writes human-reviewable YAML so the developer
- * can copy confirmed IDs into eval-queries.yaml.
+ * to score each candidate 0/1/2. Writes human-reviewable YAML and auto-updates
+ * eval-queries.yaml with gemini=2 IDs.
  *
- * Run: EVAL_LABEL=label ./gradlew test --tests LabelingHelperTest -PincludeTags=eval-label
+ * Run: ./gradlew evalLabel
  */
 @SpringBootTest
 @ActiveProfiles("local", "eval")
@@ -40,7 +39,6 @@ class LabelingHelperTest(
     @Autowired private val activitySearchService: ActivitySearchService,
     @Autowired private val activityListingRepository: ActivityListingRepository,
     @Autowired private val searchCacheService: SearchCacheService,
-    @Autowired private val upstageGroundednessService: UpstageGroundednessService,
 ) {
     private val log = LoggerFactory.getLogger(LabelingHelperTest::class.java)
     private val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
@@ -72,10 +70,8 @@ class LabelingHelperTest(
         val out = StringBuilder()
         out.appendLine("# Labeling candidates — generated ${LocalDate.now()}")
         out.appendLine("# gemini=2 → auto-written to eval-queries.yaml relevantIds")
-        out.appendLine("# upstage = Groundedness Check score (참고용, 라벨 반영 안 됨)")
         out.appendLine("queries:")
 
-        // queryId → gemini score=2 인 ID 목록 (eval-queries.yaml 자동 갱신용)
         val newRelevantIds = mutableMapOf<String, List<Long>>()
 
         querySet.queries.forEachIndexed { idx, q ->
@@ -96,16 +92,6 @@ class LabelingHelperTest(
                 .onFailure { log.warn("[labeling] {} gemini failed: {}", q.id, it.message) }
                 .getOrDefault(emptyList())
 
-            val groundednessScored = if (poolIds.isEmpty()) emptyMap()
-            else poolIds.mapNotNull { listings[it] }.associate { l ->
-                val context = buildContext(l)
-                val answer = buildAnswer(q)
-                val groundedness = runCatching { upstageGroundednessService.check(context, answer) }
-                    .onFailure { log.warn("[labeling] {} groundedness failed id={}: {}", q.id, l.id, it.message) }
-                    .getOrDefault(UpstageGroundednessService.Groundedness.NOT_SURE)
-                l.id to upstageGroundednessService.toScore(groundedness)
-            }
-
             newRelevantIds[q.id] = scored.filter { it.score == 2 }.map { it.id }
 
             out.appendLine("  - id: ${q.id}")
@@ -116,8 +102,7 @@ class LabelingHelperTest(
             poolIds.forEach { id ->
                 val l = listings[id] ?: return@forEach
                 val geminiScore = scored.firstOrNull { it.id == id }?.score ?: 0
-                val upstageScore = groundednessScored[id] ?: 0
-                out.appendLine("      - id: $id   # gemini=$geminiScore upstage=$upstageScore")
+                out.appendLine("      - id: $id   # score=$geminiScore")
                 out.appendLine("        title: ${escape(l.title)}")
                 out.appendLine("        category: ${escape(l.category ?: "")}")
                 out.appendLine("        organizer: ${escape(l.organizer)}")
@@ -142,19 +127,6 @@ class LabelingHelperTest(
         log.info("[Labeling] eval-queries.yaml updated → version={} snapshotDate={} total relevantIds={}",
             updatedQuerySet.version, updatedQuerySet.snapshotDate,
             updatedQueries.sumOf { it.relevantIds.size })
-    }
-
-    private fun buildContext(listing: ActivityListing): String =
-        listOfNotNull(
-            listing.title,
-            listing.organizer,
-            listing.category,
-            (listing.description ?: "").take(300),
-        ).filter { it.isNotBlank() }.joinToString("\n")
-
-    private fun buildAnswer(q: EvalQuery): String {
-        val queryParts = (q.tags + q.query).filter { it.isNotBlank() }
-        return "이 활동은 ${queryParts.joinToString(", ")} 관련 활동입니다."
     }
 
     private fun escape(s: String): String = "\"" + s.replace("\"", "\\\"").replace("\n", " ").trim() + "\""
