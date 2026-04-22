@@ -1,4 +1,4 @@
-version: 3
+version: 4
 snapshotDate: "2026-04-22"
 # Auto-updated by LabelingHelperTest. Gemini score=2 only.
 # Candidates detail: eval/labeling/candidates-2026-04-22.yaml
@@ -13,12 +13,12 @@ queries:
     category: head
     tags: []
     query: "공모전"
-    relevantIds: [86, 1188, 84, 735, 823, 895, 1179, 1182, 163, 904, 78, 1209, 20, 1210, 207, 1211, 1294, 1308, 1240, 728, 23, 1208, 1214, 908]
+    relevantIds: [86, 1188, 84, 735, 823, 895, 1179, 1182, 163, 78, 1209, 1210, 207, 1211, 1294, 1308, 20, 1240, 904, 1056, 126, 40, 37, 129, 1198, 1096, 204, 1100, 201, 27, 80, 166, 1178, 1086, 1221, 728, 23, 1208, 1214, 908]
   - id: q003
     category: head
     tags: []
     query: "대외활동"
-    relevantIds: [220, 765, 1330, 240, 331, 284, 286, 339, 288, 289, 340, 352, 363, 364, 369, 368, 329, 337, 353, 348, 605, 1009]
+    relevantIds: [220, 352, 240, 289, 284, 286, 288, 765, 340, 1330, 331, 339, 329, 363, 368, 337, 353, 369, 348, 364, 342, 755, 1091, 1271, 1257, 347, 357, 937, 349, 366, 372, 930, 323, 605, 1009, 1327, 858, 213]
   - id: q004
     category: head
     tags: []
@@ -28,12 +28,12 @@ queries:
     category: head
     tags: []
     query: "서포터즈"
-    relevantIds: [372, 1326, 336, 760, 322, 1195, 1084, 1083, 1320, 918, 337, 348, 355, 362, 329, 345, 357, 367, 365, 368, 743, 1331, 284, 286, 288, 661, 1117, 751, 1166]
+    relevantIds: [337, 348, 355, 362, 1195, 329, 372, 345, 357, 1084, 1326, 1083, 336, 1320, 760, 322, 918, 367, 365, 368, 803, 347, 1257, 1318, 751, 869, 286, 333, 844, 354, 1029, 1016, 1087, 1259, 1265, 743, 1331, 284, 288, 661, 1117, 1166]
   - id: q006
     category: head
     tags: []
     query: "해커톤"
-    relevantIds: [59, 133, 768]
+    relevantIds: [59, 133, 768, 949, 1190]
   - id: q007
     category: short_korean
     tags: [인턴]
@@ -44,12 +44,12 @@ queries:
     category: short_korean
     tags: []
     query: "마케팅 대학생"
-    relevantIds: [921, 1091, 605, 641, 915, 1323, 1306, 656, 1317, 979, 426, 908, 1236, 617, 1216, 1298]
+    relevantIds: [605, 1091, 921, 1323, 1317, 915, 1306, 656, 979, 641, 426, 908, 140, 895, 1056, 849, 814, 765, 1216]
   - id: q009
     category: short_korean
     tags: []
     query: "데이터 분석"
-    relevantIds: [130, 73, 168, 1256, 1300, 91, 59, 956, 28, 34, 27, 177, 147, 1311, 1333, 1052, 1184, 741, 44, 58]
+    relevantIds: [130, 73, 168, 1256, 1300, 91, 177, 59, 956, 28, 27, 124, 1184]
   - id: q010
     category: short_korean
     tags: []
@@ -59,7 +59,7 @@ queries:
     category: short_korean
     tags: []
     query: "UX 디자인"
-    relevantIds: [1288, 1086, 1143]
+    relevantIds: [1288, 1086, 1143, 987]
   - id: q012
     category: short_korean
     tags: [인턴]
@@ -69,7 +69,7 @@ queries:
     category: short_korean
     tags: []
     query: "AI 공모전"
-    relevantIds: [1001, 924, 1183, 1215, 73, 1052, 124, 86, 1188, 742, 1027, 833, 955, 148, 1213, 173, 926, 990, 84, 741, 47]
+    relevantIds: [1183, 1027, 1001, 924, 1215, 1052, 73, 124, 742, 955, 1188, 1213, 926, 833, 86, 173, 990, 148, 84, 813, 58, 1058, 1002, 822, 741, 34, 178, 47]
   - id: q014
     category: short_korean
     tags: []
@@ -85,22 +85,22 @@ queries:
     category: short_korean
     tags: []
     query: "환경 서포터즈"
-    relevantIds: [1313, 1257, 365, 1195, 1320]
+    relevantIds: [1313, 1257, 365, 747, 213, 1320, 1195, 1022, 1032, 585, 1265, 625, 1319]
   - id: q017
     category: long_natural
     tags: []
     query: "백엔드 개발 직무 체험 프로그램"
-    relevantIds: [641]
+    relevantIds: []
   - id: q018
     category: long_natural
     tags: []
     query: "대학생 창업 경진대회"
-    relevantIds: [1067, 727, 741, 1311, 981, 1333, 58, 1052, 1282, 1089, 1167, 1142, 1189, 63, 1222, 1073, 44, 34]
+    relevantIds: [1067, 727, 741, 1311, 981, 1333, 58, 1052, 1142, 1282, 1189, 1089, 1167, 1222, 1073, 63, 34, 44]
   - id: q019
     category: long_natural
     tags: []
     query: "해외 문화 교류 프로그램"
-    relevantIds: [1153, 1154, 928, 1253]
+    relevantIds: [1153, 1154, 928, 1253, 1261, 1180]
   - id: q020
     category: long_natural
     tags: []
@@ -116,12 +116,12 @@ queries:
     category: long_natural
     tags: []
     query: "여름방학 단기 활동"
-    relevantIds: [919, 1009, 1154, 1153, 937, 848]
+    relevantIds: [919, 917, 1319, 1009, 1153, 1154, 937, 848, 133]
   - id: q023
     category: synonym
     tags: []
     query: "ML"
-    relevantIds: [1058, 124, 133, 34, 73, 598, 31, 990, 926, 178]
+    relevantIds: [1058, 124, 34, 133, 337, 73, 31, 598, 926, 990, 178, 656, 126]
     notes: "머신러닝 약어. 임베딩 품질 검증."
   - id: q024
     category: synonym
@@ -132,7 +132,7 @@ queries:
     category: synonym
     tags: []
     query: "UX/UI"
-    relevantIds: [1086, 1288, 1143, 987]
+    relevantIds: [1086, 1288, 1143]
     notes: "특수문자 포함. 현재 로직은 특수문자 stripped."
   - id: q026
     category: synonym
