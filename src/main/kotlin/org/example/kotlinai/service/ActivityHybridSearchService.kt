@@ -1,5 +1,6 @@
 package org.example.kotlinai.service
 
+import org.example.kotlinai.config.EmbeddingProvider
 import org.example.kotlinai.config.RagProperties
 import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.repository.ActivityListingRepository
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 class ActivityHybridSearchService(
     private val activityListingRepository: ActivityListingRepository,
     private val embeddingService: EmbeddingService,
+    private val upstageEmbeddingService: UpstageEmbeddingService,
     private val ragProperties: RagProperties,
 ) {
     private val log = LoggerFactory.getLogger(ActivityHybridSearchService::class.java)
@@ -39,8 +41,16 @@ class ActivityHybridSearchService(
 
     private fun fetchVectorResults(searchText: String, limit: Int): List<ActivityListing> =
         try {
-            val queryVector = embeddingService.embedText(searchText, "RETRIEVAL_QUERY")
-            activityListingRepository.findByVectorSimilarity(queryVector.toVectorString(), limit)
+            when (ragProperties.embeddingProvider) {
+                EmbeddingProvider.UPSTAGE -> {
+                    val queryVector = upstageEmbeddingService.embedQuery(searchText)
+                    activityListingRepository.findByUpstageVectorSimilarity(queryVector.toVectorString(), limit)
+                }
+                EmbeddingProvider.GEMINI -> {
+                    val queryVector = embeddingService.embedText(searchText, "RETRIEVAL_QUERY")
+                    activityListingRepository.findByVectorSimilarity(queryVector.toVectorString(), limit)
+                }
+            }
         } catch (e: Exception) {
             log.warn("[ActivityHybrid-Vector] vector search failed, fallback to keyword: {}", e.message)
             emptyList()

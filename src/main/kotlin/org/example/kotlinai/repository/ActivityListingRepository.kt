@@ -72,6 +72,41 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
 
     fun findByEmbeddingIsNull(): List<ActivityListing>
 
+    fun findByEmbeddingUpstageIsNull(): List<ActivityListing>
+
+    @Query(
+        value = """
+            SELECT * FROM activity_listings
+            WHERE embedding_upstage IS NOT NULL
+              AND (deadline IS NULL OR deadline >= CURRENT_DATE)
+            ORDER BY embedding_upstage <=> CAST(:queryVector AS vector)
+            LIMIT :lim
+        """,
+        nativeQuery = true,
+    )
+    fun findByUpstageVectorSimilarity(
+        @Param("queryVector") queryVector: String,
+        @Param("lim") limit: Int,
+    ): List<ActivityListing>
+
+    @Modifying
+    @Query(
+        value = """
+            UPDATE activity_listings
+            SET embedding_upstage = CAST(:embedding AS vector),
+                embedded_upstage_at = :embeddedAt,
+                embedding_upstage_model = :embeddingModel
+            WHERE id = :id
+        """,
+        nativeQuery = true,
+    )
+    fun updateUpstageEmbedding(
+        @Param("id") id: Long,
+        @Param("embedding") embedding: String,
+        @Param("embeddedAt") embeddedAt: java.time.LocalDateTime,
+        @Param("embeddingModel") embeddingModel: String,
+    )
+
     @Modifying
     @Query(
         value = """
