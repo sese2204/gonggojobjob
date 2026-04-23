@@ -115,6 +115,67 @@ By category (Recall@10):
 
 ## Runs
 
+### Round 2 — labeling snapshot 2026-04-22 (`runs/round-2/`)
+
+**목표**: Gemini 임베딩(768d) vs Upstage Solar 임베딩(4096d) A/B 비교.
+Upstage는 한국어 특화 + 고차원이라 우위가 예상됐으나 결과는 반대.
+
+| Label | Recall@10 | nDCG@10 | P@5 | MRR | p50 |
+|---|---|---|---|---|---|
+| `round2-gemini` | **0.834** | **0.955** | **0.728** | **0.960** | 17.3s |
+| `round2-upstage` | 0.737 | 0.833 | 0.600 | 0.947 | 17.6s |
+
+By category (Recall@10):
+
+| Category | round2-gemini | round2-upstage |
+|---|---|---|
+| head (n=6) | **0.703** | — |
+| short_korean (n=10) | **0.825** | — |
+| long_natural (n=6) | **0.844** | — |
+| synonym (n=4) | **0.933** | — |
+| adversarial (n=4) | **1.000** | **1.000** |
+
+**⚠️ 결과를 신뢰할 수 없음 — 라벨 편향(label bias) 문제**
+
+Round 2 라벨링은 `activitySearchService.search()`(기본 provider = Gemini)의
+검색 결과를 후보 풀로 사용해 Gemini가 0/1/2 채점했다.
+즉, **relevantIds가 Gemini가 찾은 문서로만 구성**됨.
+
+Upstage가 Gemini와 다른 관련 문서를 찾아와도 라벨 후보에 없기 때문에
+true positive로 인정받지 못한다. eval 자체가 Gemini 편향.
+
+→ Round 3에서 수정 후 재실험. 결과는 아래 참조.
+
+### Round 3 — labeling snapshot 2026-04-22 v4 (`runs/round-3/`)
+
+**변경**: 라벨링 후보 풀 = Gemini hybrid pool + Upstage vector pool + ILIKE pool (take 80).
+두 모델이 각자 찾는 문서를 모두 포함시킨 뒤 Gemini LLM이 공정하게 채점.
+
+| Label | Recall@10 | nDCG@10 | P@5 | MRR | p50 |
+|---|---|---|---|---|---|
+| `round3-gemini` | **0.752** | **0.954** | **0.792** | **1.000** | ~17s |
+| `round3-upstage` | 0.711 | 0.906 | 0.758 | 1.000 | ~18s |
+
+By category (Recall@10):
+
+| Category | round3-gemini | round3-upstage | 승자 |
+|---|---|---|---|
+| head (n=6) | 0.559 | **0.612** | Upstage |
+| short_korean (n=10) | **0.764** | 0.650 | Gemini |
+| long_natural (n=6) | **0.722** | 0.681 | Gemini |
+| synonym (n=4) | **0.897** | 0.821 | Gemini |
+| adversarial (n=4) | **1.000** | 1.000 | 동률 |
+
+**R2 → R3 격차 변화 (Recall@10)**:
+- Round 2: Gemini 0.834 vs Upstage 0.737 → **격차 0.097**
+- Round 3: Gemini 0.752 vs Upstage 0.711 → **격차 0.041** (라벨 편향 수정으로 절반)
+
+**결론**:
+1. **라벨 편향 가설 확인** — 격차가 0.097 → 0.041로 감소. 공정한 풀링이 필요했음.
+2. **Gemini 임베딩 전반적 우위** — 차원 수·한국어 특화와 무관하게 이 도메인(대외활동 공고)에서 Gemini가 better.
+3. **head 쿼리에서 Upstage 우위** — 단일 토큰 쿼리("인턴", "공모전")에서 Upstage(0.612) > Gemini(0.559). 짧은 한국어에서 한국어 특화 강점 확인.
+4. **R3 Recall@10이 R2보다 낮은 것은 정상** — 공정한 라벨에 relevantIds가 더 많아져 top-10 커버리지가 더 엄격하게 측정됨. R3가 더 honest한 숫자.
+
 ### Round 1 — labeling snapshot 2026-04-20 (`runs/round-1/`)
 
 | Label | Date | Commit | Corpus snapshot | Notes |
