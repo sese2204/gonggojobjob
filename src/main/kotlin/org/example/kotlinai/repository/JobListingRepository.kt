@@ -71,7 +71,7 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
     fun deleteBySourceNameAndSourceIdNotIn(
         @Param("sourceName") sourceName: String,
         @Param("sourceIds") sourceIds: List<String>,
-    )
+    ): Int
 
     // Count jobs collected after a given time
     fun countByCollectedAtAfter(after: java.time.LocalDateTime): Long

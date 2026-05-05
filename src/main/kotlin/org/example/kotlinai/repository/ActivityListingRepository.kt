@@ -19,7 +19,7 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
     fun deleteBySourceNameAndSourceIdNotIn(
         @Param("sourceName") sourceName: String,
         @Param("sourceIds") sourceIds: List<String>,
-    )
+    ): Int
 
     // Vector similarity search — excludes expired listings
     @Query(

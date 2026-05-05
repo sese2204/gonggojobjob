@@ -150,10 +150,13 @@ class JobIngestionService(
 
             if (client.supportsFullSync()) {
                 if (incomingSourceIds.isNotEmpty()) {
-                    jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
+                    val deletedCount = jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
                         client.sourceName(),
                         incomingSourceIds.toList(),
                     )
+                    if (deletedCount > 0) {
+                        log.info("[{}] API에서 내려간 공고 {}건 삭제", client.sourceName(), deletedCount)
+                    }
                 }
             } else {
                 val reseenIds = incomingSourceIds.filter { it in existingSourceIds }
