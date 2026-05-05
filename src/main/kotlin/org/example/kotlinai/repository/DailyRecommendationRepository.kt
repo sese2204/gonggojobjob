@@ -12,7 +12,19 @@ interface DailyRecommendationRepository : JpaRepository<DailyRecommendation, Lon
     @Query("""
         SELECT d FROM DailyRecommendation d
         WHERE d.generatedAt = :generatedAt
-          AND (d.deadline IS NULL OR d.deadline >= :today)
+          AND (
+            (d.jobListingId IS NOT NULL AND EXISTS (
+              SELECT j FROM JobListing j
+              WHERE j.id = d.jobListingId
+                AND (j.deadline IS NULL OR j.deadline >= :today)
+            ))
+            OR
+            (d.activityListingId IS NOT NULL AND EXISTS (
+              SELECT a FROM ActivityListing a
+              WHERE a.id = d.activityListingId
+                AND (a.deadline IS NULL OR a.deadline >= :today)
+            ))
+          )
         ORDER BY d.category ASC, d.matchScore DESC
     """)
     fun findByGeneratedAtOrderByCategoryAscMatchScoreDesc(
