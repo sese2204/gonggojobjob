@@ -8,10 +8,12 @@ import org.example.kotlinai.dto.response.ExternalJobDto
 import org.example.kotlinai.global.exception.AiServiceException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 
 @Service
+@Profile("local")
 class WantedJobClient(
     @Value("\${wanted.api.url}") private val apiUrl: String,
     @Value("\${wanted.api.timeout-seconds:30}") private val timeoutSeconds: Long,

@@ -86,7 +86,7 @@ class JobIngestionServiceTest {
     }
 
     @Test
-    fun `client throwing exception marks run as failed`() {
+    fun `client throwing exception marks run as failed and continues to next source`() {
         val failingClient = object : ExternalJobClient {
             override fun sourceName() = "failing"
             override fun fetchJobs(): List<ExternalJobDto> = throw RuntimeException("boom")
@@ -102,9 +102,9 @@ class JobIngestionServiceTest {
         doAnswer { it.arguments[0] as IngestionRun }
             .whenever(ingestionRunRepository).save(any())
 
-        assertFailsWith<RuntimeException> {
-            failService.runIngestion("failing")
-        }
+        val results = failService.runIngestion("failing")
+
+        assertTrue(results.isEmpty())
         verify(ingestionRunRepository, times(2)).save(any())
     }
 }

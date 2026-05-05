@@ -31,6 +31,8 @@ class DailyRecommendation(
 
     val endDate: String? = null,
 
+    val deadline: LocalDate? = null,
+
     @Column(nullable = false)
     val matchScore: Int,
 

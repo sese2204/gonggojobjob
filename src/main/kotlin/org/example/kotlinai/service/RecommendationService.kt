@@ -25,7 +25,7 @@ class RecommendationService(
         }
 
         val recommendations = dailyRecommendationRepository
-            .findByGeneratedAtOrderByCategoryAscMatchScoreDesc(targetDate)
+            .findByGeneratedAtOrderByCategoryAscMatchScoreDesc(targetDate, LocalDate.now(ZONE_SEOUL))
 
         val grouped = recommendations.groupBy { it.category }
 

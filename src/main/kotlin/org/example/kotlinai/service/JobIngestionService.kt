@@ -30,7 +30,6 @@ class JobIngestionService(
 
     fun getSourceNames(): List<String> = clients.map { it.sourceName() }
 
-    @Transactional
     fun runIngestion(source: String?): List<JobIngestionResponse> {
         val targets = if (source == null) {
             clients
@@ -40,7 +39,14 @@ class JobIngestionService(
             }
             clients.filter { it.sourceName() == source }
         }
-        return targets.map { runSingle(it) }
+        return targets.mapNotNull { client ->
+            try {
+                runSingle(client)
+            } catch (e: Exception) {
+                log.error("[Ingestion] {} 소스 실패, 다음 소스 진행: {}", client.sourceName(), e.message)
+                null
+            }
+        }
     }
 
     fun getHistory(): List<JobIngestionResponse> =
