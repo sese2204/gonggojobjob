@@ -5,5 +5,6 @@ data class JobIngestionResponse(
     val newCount: Int,
     val duplicateCount: Int,
     val failedCount: Int,
+    val deletedCount: Int,
     val success: Boolean,
 )

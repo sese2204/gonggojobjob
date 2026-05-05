@@ -135,6 +135,7 @@ class JobIngestionService(
             var newCount = 0
             var duplicateCount = 0
             var failedCount = 0
+            var deletedCount = 0
 
             val existingSourceIds = jobListingRepository
                 .findSourceIdsBySourceName(client.sourceName())
@@ -150,7 +151,7 @@ class JobIngestionService(
 
             if (client.supportsFullSync()) {
                 if (incomingSourceIds.isNotEmpty()) {
-                    val deletedCount = jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
+                    deletedCount = jobListingRepository.deleteBySourceNameAndSourceIdNotIn(
                         client.sourceName(),
                         incomingSourceIds.toList(),
                     )
@@ -202,6 +203,7 @@ class JobIngestionService(
             run.newCount = newCount
             run.duplicateCount = duplicateCount
             run.failedCount = failedCount
+            run.deletedCount = deletedCount
             run.success = true
             run.completedAt = LocalDateTime.now()
             ingestionRunRepository.save(run)
@@ -288,5 +290,6 @@ fun IngestionRun.toResponse() = JobIngestionResponse(
     newCount = newCount,
     duplicateCount = duplicateCount,
     failedCount = failedCount,
+    deletedCount = deletedCount,
     success = success,
 )
