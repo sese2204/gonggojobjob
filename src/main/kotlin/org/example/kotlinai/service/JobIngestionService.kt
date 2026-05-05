@@ -11,6 +11,7 @@ import org.jsoup.Jsoup
 import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -30,6 +31,7 @@ class JobIngestionService(
 
     fun getSourceNames(): List<String> = clients.map { it.sourceName() }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun runIngestion(source: String?): List<JobIngestionResponse> {
         val targets = if (source == null) {
             clients
