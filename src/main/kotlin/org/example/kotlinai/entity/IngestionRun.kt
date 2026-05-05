@@ -21,6 +21,7 @@ class IngestionRun(
 
     var failedCount: Int = 0,
 
+    @Column(columnDefinition = "integer default 0")
     var deletedCount: Int = 0,
 
     var success: Boolean = false,
