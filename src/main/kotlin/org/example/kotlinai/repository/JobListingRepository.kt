@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 interface JobListingRepository : JpaRepository<JobListing, Long> {
@@ -65,6 +66,7 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
 
     // Upsert support: delete obsolete listings
     @Modifying
+    @Transactional
     @Query("DELETE FROM JobListing j WHERE j.sourceName = :sourceName AND j.sourceId NOT IN :sourceIds")
     fun deleteBySourceNameAndSourceIdNotIn(
         @Param("sourceName") sourceName: String,
@@ -97,6 +99,7 @@ interface JobListingRepository : JpaRepository<JobListing, Long> {
     )
 
     @Modifying
+    @Transactional
     @Query(
         value = """
             UPDATE job_listings SET deadline = :deadline

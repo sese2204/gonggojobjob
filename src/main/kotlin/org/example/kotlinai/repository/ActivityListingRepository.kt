@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
@@ -13,6 +14,7 @@ interface ActivityListingRepository : JpaRepository<ActivityListing, Long> {
     fun findSourceIdsBySourceName(@Param("sourceName") sourceName: String): List<String>
 
     @Modifying
+    @Transactional
     @Query("DELETE FROM ActivityListing a WHERE a.sourceName = :sourceName AND a.sourceId NOT IN :sourceIds")
     fun deleteBySourceNameAndSourceIdNotIn(
         @Param("sourceName") sourceName: String,
