@@ -7,8 +7,9 @@ import org.example.kotlinai.dto.request.ActivitySearchRequest
 import org.example.kotlinai.entity.ActivityListing
 import org.example.kotlinai.repository.ActivityListingRepository
 import org.example.kotlinai.service.ActivitySearchService
+import org.example.kotlinai.service.EmbeddingService.Companion.toVectorString
 import org.example.kotlinai.service.SearchCacheService
-import org.example.kotlinai.service.UpstageGroundednessService
+import org.example.kotlinai.service.UpstageEmbeddingService
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
@@ -28,19 +29,19 @@ import java.time.LocalDate
 
 /**
  * One-shot helper. Builds a labeling candidate pool per query and asks Gemini
- * to score each candidate 0/1/2. Writes human-reviewable YAML so the developer
- * can copy confirmed IDs into eval-queries.yaml.
+ * to score each candidate 0/1/2. Writes human-reviewable YAML and auto-updates
+ * eval-queries.yaml with gemini=2 IDs.
  *
- * Run: EVAL_LABEL=label ./gradlew test --tests LabelingHelperTest -PincludeTags=eval-label
+ * Run: ./gradlew evalLabel
  */
 @SpringBootTest
-@ActiveProfiles("eval")
+@ActiveProfiles("local", "eval")
 @Tag("eval-label")
 class LabelingHelperTest(
     @Autowired private val activitySearchService: ActivitySearchService,
     @Autowired private val activityListingRepository: ActivityListingRepository,
     @Autowired private val searchCacheService: SearchCacheService,
-    @Autowired private val upstageGroundednessService: UpstageGroundednessService,
+    @Autowired private val upstageEmbeddingService: UpstageEmbeddingService,
 ) {
     private val log = LoggerFactory.getLogger(LabelingHelperTest::class.java)
     private val mapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
@@ -63,6 +64,7 @@ class LabelingHelperTest(
     @Test
     fun `generate labeling candidates`() {
         val outputDir = System.getenv("EVAL_OUTPUT_DIR") ?: "src/test/resources/eval/labeling"
+        val querySetPath = System.getenv("EVAL_QUERY_SET_PATH") ?: "src/test/resources/eval/eval-queries.yaml"
         Files.createDirectories(Paths.get(outputDir))
 
         val querySet = EvalIo.loadQuerySet("eval/eval-queries.yaml")
@@ -70,20 +72,33 @@ class LabelingHelperTest(
 
         val out = StringBuilder()
         out.appendLine("# Labeling candidates — generated ${LocalDate.now()}")
-        out.appendLine("# Review each candidate. Copy IDs with score >= 2 (or your judgement) into eval-queries.yaml#relevantIds")
+        out.appendLine("# gemini=2 → auto-written to eval-queries.yaml relevantIds")
         out.appendLine("queries:")
+
+        val newRelevantIds = mutableMapOf<String, List<Long>>()
 
         querySet.queries.forEachIndexed { idx, q ->
             log.info("[{}/{}] labeling {} tags={} query='{}'", idx + 1, querySet.queries.size, q.id, q.tags, q.query)
             clearCache()
 
-            val hybridPool = runCatching {
+            // Gemini hybrid (keyword + Gemini vector)
+            val geminiPool = runCatching {
                 activitySearchService.search(ActivitySearchRequest(tags = q.tags, query = q.query))
                     .activities.mapNotNull { it.id.toLongOrNull() }
             }.getOrDefault(emptyList())
 
+            // Upstage vector — separate direct search to avoid provider config dependency
+            val searchText = (q.tags + q.query.split(" ").filter { it.isNotBlank() })
+                .joinToString(" ").ifBlank { q.query }
+            val upstagePool = if (searchText.isBlank()) emptyList() else runCatching {
+                val vec = upstageEmbeddingService.embedQuery(searchText)
+                activityListingRepository.findByUpstageVectorSimilarity(vec.toVectorString(), 20)
+                    .map { it.id }
+            }.onFailure { log.warn("[labeling] {} upstage pool failed: {}", q.id, it.message) }
+                .getOrDefault(emptyList())
+
             val ilikePool = ilikeCandidates(q.tags + q.query.split(" ").filter { it.isNotBlank() }, 15)
-            val poolIds = (hybridPool + ilikePool).distinct().take(50)
+            val poolIds = (geminiPool + upstagePool + ilikePool).distinct().take(80)
             val listings = activityListingRepository.findAllById(poolIds).associateBy { it.id }
 
             val scored = if (poolIds.isEmpty()) emptyList()
@@ -91,15 +106,7 @@ class LabelingHelperTest(
                 .onFailure { log.warn("[labeling] {} gemini failed: {}", q.id, it.message) }
                 .getOrDefault(emptyList())
 
-            val groundednessScored = if (poolIds.isEmpty()) emptyMap()
-            else poolIds.mapNotNull { listings[it] }.associate { l ->
-                val context = buildContext(l)
-                val answer = buildAnswer(q)
-                val groundedness = runCatching { upstageGroundednessService.check(context, answer) }
-                    .onFailure { log.warn("[labeling] {} groundedness failed id={}: {}", q.id, l.id, it.message) }
-                    .getOrDefault(UpstageGroundednessService.Groundedness.NOT_SURE)
-                l.id to upstageGroundednessService.toScore(groundedness)
-            }
+            newRelevantIds[q.id] = scored.filter { it.score == 2 }.map { it.id }
 
             out.appendLine("  - id: ${q.id}")
             out.appendLine("    category: ${q.category}")
@@ -109,8 +116,7 @@ class LabelingHelperTest(
             poolIds.forEach { id ->
                 val l = listings[id] ?: return@forEach
                 val geminiScore = scored.firstOrNull { it.id == id }?.score ?: 0
-                val upstageScore = groundednessScored[id] ?: 0
-                out.appendLine("      - id: $id   # gemini=$geminiScore upstage=$upstageScore")
+                out.appendLine("      - id: $id   # score=$geminiScore")
                 out.appendLine("        title: ${escape(l.title)}")
                 out.appendLine("        category: ${escape(l.category ?: "")}")
                 out.appendLine("        organizer: ${escape(l.organizer)}")
@@ -119,22 +125,22 @@ class LabelingHelperTest(
             }
         }
 
-        val file = File(outputDir, "candidates-${LocalDate.now()}.yaml")
-        file.writeText(out.toString())
-        log.info("[Labeling] wrote → {}", file.absolutePath)
-    }
+        val candidatesFile = File(outputDir, "candidates-${LocalDate.now()}.yaml")
+        candidatesFile.writeText(out.toString())
+        log.info("[Labeling] candidates → {}", candidatesFile.absolutePath)
 
-    private fun buildContext(listing: ActivityListing): String =
-        listOfNotNull(
-            listing.title,
-            listing.organizer,
-            listing.category,
-            (listing.description ?: "").take(300),
-        ).filter { it.isNotBlank() }.joinToString("\n")
-
-    private fun buildAnswer(q: EvalQuery): String {
-        val queryParts = (q.tags + q.query).filter { it.isNotBlank() }
-        return "이 활동은 ${queryParts.joinToString(", ")} 관련 활동입니다."
+        val updatedQueries = querySet.queries.map { q ->
+            q.copy(relevantIds = newRelevantIds[q.id] ?: emptyList())
+        }
+        val updatedQuerySet = querySet.copy(
+            version = querySet.version + 1,
+            snapshotDate = LocalDate.now().toString(),
+            queries = updatedQueries,
+        )
+        EvalIo.writeQuerySet(updatedQuerySet, querySetPath)
+        log.info("[Labeling] eval-queries.yaml updated → version={} snapshotDate={} total relevantIds={}",
+            updatedQuerySet.version, updatedQuerySet.snapshotDate,
+            updatedQueries.sumOf { it.relevantIds.size })
     }
 
     private fun escape(s: String): String = "\"" + s.replace("\"", "\\\"").replace("\n", " ").trim() + "\""

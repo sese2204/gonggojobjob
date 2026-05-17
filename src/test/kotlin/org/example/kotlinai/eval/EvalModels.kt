@@ -77,6 +77,26 @@ object EvalIo {
         return stream.use { yaml.readValue(it) }
     }
 
+    fun writeQuerySet(querySet: EvalQuerySet, outputPath: String) {
+        val file = File(outputPath)
+        val sb = StringBuilder()
+        sb.appendLine("version: ${querySet.version}")
+        sb.appendLine("snapshotDate: \"${querySet.snapshotDate}\"")
+        sb.appendLine("# Auto-updated by LabelingHelperTest. Gemini score=2 only.")
+        sb.appendLine("# Candidates detail: eval/labeling/candidates-${querySet.snapshotDate}.yaml")
+        sb.appendLine("queries:")
+        querySet.queries.forEach { q ->
+            sb.appendLine("  - id: ${q.id}")
+            sb.appendLine("    category: ${q.category}")
+            sb.appendLine("    tags: ${q.tags}")
+            sb.appendLine("    query: \"${q.query.replace("\"", "\\\"")}\"")
+            val ids = q.relevantIds.joinToString(", ")
+            sb.appendLine("    relevantIds: [${ids}]")
+            if (q.notes != null) sb.appendLine("    notes: \"${q.notes.replace("\"", "\\\"")}\"")
+        }
+        file.writeText(sb.toString())
+    }
+
     fun writeReport(report: EvalReport, outputDir: String, label: String): File {
         val dir = Paths.get(outputDir)
         Files.createDirectories(dir)
